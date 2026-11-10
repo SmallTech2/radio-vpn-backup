@@ -1,0 +1,9 @@
+# Fichier local prive, jamais dans GitHub avec vos vraies valeurs.
+VPS_NAME=vpn-exemple
+HOST=192.0.2.10
+PORT=22
+SSH_KEY=/volume1/sauvegardes/cles/vpn-exemple_ed25519
+KNOWN_HOSTS=/volume1/sauvegardes/cles/known_hosts
+DESTINATION=/volume1/sauvegardes/radio-vpn
+DAILY=7
+WEEKLY=4
