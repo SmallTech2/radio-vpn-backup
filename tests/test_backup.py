@@ -79,8 +79,13 @@ class Snapshot(unittest.TestCase):
         return path
 
     def test_full_archive_inventory_modes_links_sqlite(self):
+        counter = "usr/share/easy-rsa/pki/crlnumber"
+        (self.root / counter).write_bytes(b"42\n")
         archive = self.archive()
         manifest = snapshot.check(archive)
+        self.assertIn(counter, manifest["files"])
+        with tarfile.open(archive) as tar:
+            self.assertEqual(tar.extractfile("payload/" + counter).read(), b"42\n")
         self.assertEqual(manifest["format"], 1)
         self.assertEqual(manifest["files"]["usr/share/easy-rsa/pki/private/ca.key"]["mode"], 0o600)
         self.assertEqual(manifest["files"]["etc/openvpn/pki"]["target"], "/usr/share/easy-rsa/pki")
@@ -98,7 +103,19 @@ class Snapshot(unittest.TestCase):
         original = metadata.read_bytes()
         for name in snapshot.OPTIONAL_FILES:
             (self.root / name).unlink()
+        pki = self.root / "usr/share/easy-rsa/pki"
+        self.assertFalse((pki / "crlnumber").exists())
+        crl = (pki / "crl.pem").read_bytes()
+        index = (pki / "index.txt").read_bytes()
+        crl_text = snapshot.command("openssl", "crl", "-in", str(pki / "crl.pem"), "-text", "-noout")
+        self.assertNotIn(b"CRL Number", crl_text)
+        snapshot.preflight(self.root)
         manifest = snapshot.check(self.archive())
+        self.assertNotIn("usr/share/easy-rsa/pki/crlnumber", manifest["files"])
+        self.assertFalse((pki / "crlnumber").exists())
+        for name, original_content in (("crl.pem", crl), ("index.txt", index)):
+            self.assertEqual((pki / name).read_bytes(), original_content)
+            self.assertEqual((self.folder / "snapshot/payload/usr/share/easy-rsa/pki" / name).read_bytes(), original_content)
         self.assertEqual(manifest["deployment"]["release_tag"], "radio-v2.1")
         self.assertEqual(manifest["missing_optional"], list(snapshot.OPTIONAL_FILES))
         self.assertTrue(set(snapshot.REQUIRED_FILES).issubset(manifest["files"]))
@@ -109,6 +126,9 @@ class Snapshot(unittest.TestCase):
     def test_required_components_remain_required(self):
         names = ("etc/openvpn/server.conf", "etc/openvpn/config/client.conf",
                  "usr/share/easy-rsa/pki/private/ca.key",
+                 "usr/share/easy-rsa/pki/crl.pem",
+                 "usr/share/easy-rsa/pki/index.txt",
+                 "usr/share/easy-rsa/pki/serial",
                  "etc/systemd/system/radio-renew-crl.timer",
                  "opt/openvpn-ui-runtime/db/data.db")
         for name in names:

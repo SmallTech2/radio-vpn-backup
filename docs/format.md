@@ -18,7 +18,7 @@ sans mettre à jour le VPN ni modifier son fichier de déploiement.
 
 **Indispensables :** les quatre arborescences Easy-RSA, OpenVPN, runtime UI et scripts ;
 la configuration serveur et le modèle client ; le dossier CCD ; la PKI avec CA et clés,
-certificat serveur, index, compteur de série, compteur CRL, vars, CRL, DH et clé tls-crypt ;
+certificat serveur, index, compteur de série, vars, CRL, DH et clé tls-crypt ;
 le binaire UI exécutable, sa configuration, sa base SQLite et ses ressources ; le fichier
 d’environnement UI, les métadonnées de déploiement, l’unité UI et les deux unités ainsi
 que le script de renouvellement CRL. Ces derniers sont nécessaires au mécanisme existant
@@ -28,6 +28,11 @@ de suspension du renouvellement pendant la copie.
 IPv6, logrotate et les limites journald. Ils sont copiés seulement s’ils existent ; leur
 absence n’empêche pas la sauvegarde. Ne pas les créer artificiellement pour passer un contrôle.
 Un élément facultatif présent sous un type incorrect est refusé.
+
+Le compteur PKI `crlnumber` n'est pas indispensable : Easy-RSA peut générer une CRL
+sans ce fichier. S'il existe, il est conservé avec toute l'arborescence PKI ; s'il est
+absent, la sauvegarde ne le crée pas. `crl.pem` et `index.txt` restent obligatoires,
+avec vérification de la signature de la CRL et des séries révoquées de l'index.
 
 La copie SQLite est contrôlée, ainsi que les correspondances clés/certificats, les
 révocations et les IP fixes. Le réseau déclaré dans les métadonnées doit correspondre à
@@ -44,7 +49,7 @@ déjà sa restauration. Vérifier ce point avant toute bascule ou suppression du
 
 | Chemin | Role / restauration |
 | --- | --- |
-| `/usr/share/easy-rsa/` | Outils et PKI complete : `private/`, `issued/`, `reqs/`, `revoked/`, `renewed/`, index et anciennes copies, serial, crlnumber, vars, CRL, DH, `ta.key` |
+| `/usr/share/easy-rsa/` | Outils et PKI complete : `private/`, `issued/`, `reqs/`, `revoked/`, `renewed/`, index et anciennes copies, serial, crlnumber s'il existe, vars, CRL, DH, `ta.key` |
 | `/etc/openvpn/` | Serveur, modele client, profils, secrets MFA, CCD ; lien `pki` vers `/usr/share/easy-rsa/pki` |
 | `/opt/openvpn-ui-runtime/` | Binaire, `conf`, SQLite `db/data.db`, ressources UI, licence ; exclut `logs/` |
 | `/opt/scripts/` | Scripts applicatifs ; lien `qrencode` vers `/usr/bin/qrencode` |

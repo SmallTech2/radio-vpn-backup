@@ -32,7 +32,7 @@ OPTIONAL_FILES = (
 FILES = REQUIRED_FILES + OPTIONAL_FILES
 CORE_FILES = ("etc/openvpn/server.conf", "etc/openvpn/config/client.conf")
 PKI_FILES = ("ca.crt", "private/ca.key", "private/server.key", "issued/server.crt", "ta.key",
-             "dh.pem", "index.txt", "serial", "crlnumber", "vars", "crl.pem")
+             "dh.pem", "index.txt", "serial", "vars", "crl.pem")
 ALLOWED = TREES + FILES
 ID = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}")
 
