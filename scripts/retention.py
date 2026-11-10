@@ -18,7 +18,7 @@ def retained(names, daily=7, weekly=4):
 def prune(folder, daily, weekly):
     if daily < 1 or weekly < 1:
         raise ValueError("Retentions positives requises.")
-    files = {p.name: p for p in folder.iterdir() if re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}\.tar\.gz\.age", p.name)
+    files = {p.name: p for p in folder.iterdir() if re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}\.tar\.gz", p.name)
              and p.is_file() and not p.is_symlink()}
     keep = retained(files, daily, weekly)
     for name in files.keys() - keep:

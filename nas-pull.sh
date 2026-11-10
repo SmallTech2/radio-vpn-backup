@@ -34,7 +34,7 @@ while IFS= read -r id; do
   [[ "$id" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$ ]] || { echo 'Identifiant distant invalide.' >&2; exit 1; }
   hash=$("${SSH[@]}" "hash $id")
   [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || exit 1
-  file="$DEST/$id.tar.gz.age"
+  file="$DEST/$id.tar.gz"
   if [[ ! -f "$file" ]]; then
     PART="$DEST/.$id.partial"
     "${SSH[@]}" "get $id" > "$PART"

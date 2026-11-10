@@ -1,6 +1,6 @@
 # radio-vpn-backup
 
-Preparation de sauvegardes **chiffrees** d'un VPS Debian 13 AMD64 installe avec
+Preparation de sauvegardes **non chiffrees au format `.tar.gz`** d'un VPS Debian 13 AMD64 installe avec
 [radio-vpn](https://github.com/SmallTech2/radio-vpn), reference **radio-v2.4**.
 Le VPS prepare les archives ; le NAS les recupere en SSH. **Le VPS ne contacte jamais le NAS.**
 
@@ -14,25 +14,30 @@ les cles et certificats, les revocations, les IP fixes, les profils clients et s
 la base SQLite UI, le binaire et ses ressources, les scripts et les configurations du projet.
 Les permissions, proprietaires numeriques et liens symboliques sont conserves.
 `manifest.json` contient les empreintes internes et versions ; `INVENTORY.txt` liste
-les fichiers, modes, UID/GID et liens. Ces inventaires sont eux aussi chiffres.
+les fichiers, modes, UID/GID et liens dans l archive.
 Les journaux et l'OS complet ne sont pas sauvegardes.
 
-## 1. Generer la cle de chiffrement hors du VPS
+## Confidentialite
 
-Sur un poste de confiance disposant de `age` (sur Debian : `sudo apt install age`) :
+**Les archives ne sont pas chiffrees.** Elles contiennent des informations sensibles,
+notamment la cle privee de la CA OpenVPN et les cles privees des clients. Ce choix est
+volontaire et le risque est accepte pour simplifier la restauration d'urgence.
+Les stocker dans des dossiers prives, sans partage public ni publication GitHub.
+Le compte SSH de sauvegarde peut lire tous ces secrets dans l'archive ; limiter sa cle
+au NAS autorise. Le transport SSH protege le transfert, pas le fichier stocke sur disque.
+
+## 1. Preparer la cle SSH du NAS
+
+Sur un poste de confiance ou sur le NAS :
 
 ```bash
 umask 077
-age-keygen -o radio-vpn-recovery.key
-age-keygen -y radio-vpn-recovery.key > radio-vpn-recipient.txt
 ssh-keygen -t ed25519 -f vpn-backup-ed25519
 ```
 
-Conserver **deux copies independantes** de `radio-vpn-recovery.key`, par exemple dans
-un coffre et sur un support hors ligne. Tester le dechiffrement. **Ne jamais copier
-cette cle privee sur le VPS a sauvegarder.** Le fichier `radio-vpn-recipient.txt` est public.
-La cle SSH est distincte de la cle de chiffrement. Pour une tache automatique NAS,
-utiliser un agent SSH ou une cle dediee sans phrase secrete, fichier prive 0600 sur le NAS.
+Conserver la cle privee sur le NAS, fichier 0600 ; seule la cle publique est transferee
+au VPS. Pour une tache automatique, utiliser un agent SSH ou une cle dediee sans phrase
+secrete, dont l'acces reste reserve au compte de la tache.
 
 ## 2. Installer sur le VPS
 
@@ -47,22 +52,22 @@ cd radio-vpn-backup
 git rev-parse HEAD
 ```
 
-Transferer **uniquement** les deux fichiers publics au VPS, puis depuis ce depot :
+Transferer **uniquement** la cle SSH publique au VPS, puis depuis ce depot :
 
 ```bash
-sudo bash install.sh /chemin/radio-vpn-recipient.txt /chemin/vpn-backup-ed25519.pub
+sudo bash install.sh /chemin/vpn-backup-ed25519.pub
 sudo radio-vpn-backup
 ```
 
-L'installation ajoute `age` (chiffrement authentifie a cle publique), Python 3 standard
-(SQLite et verification), cron et util-linux. Le compte systeme `radio-vpn-backup` est
+L'installation utilise Python 3 standard (SQLite et verification), cron et util-linux. Le compte systeme `radio-vpn-backup` est
 reserve a cet outil ; l'installateur refuse de reutiliser un compte existant.
 Il ne modifie pas la configuration SSH globale, nftables ou OpenVPN.
 
 `authorized_keys` appartient a root et impose une commande forcee avec `restrict` :
 pas de terminal, transfert de ports, agent, X11 ou commande libre. Les seules commandes
 sont `list`, `hash IDENTIFIANT` et `get IDENTIFIANT`. Le compte peut lire les archives
-**chiffrees**, pas les copies de travail, la PKI ou les configurations VPN protegees.
+**non chiffrees** : leur contenu inclut la PKI. Il n'accede pas directement aux
+copies de travail ou aux configurations VPN protegees et ne peut pas les modifier.
 Il ne dispose pas de sudo. Les permissions Unix ordinaires des autres fichiers publics
 du systeme ne sont pas changees ; la commande forcee ne fournit aucun moyen de les lire.
 Si votre SSH utilise `AllowUsers`/`AllowGroups`, autoriser explicitement ce compte sans
@@ -72,7 +77,6 @@ Ne pas ouvrir de port supplementaire : le NAS utilise le port SSH existant.
 Configuration root uniquement : `/etc/radio-vpn-backup.conf` :
 
 ```bash
-RECIPIENTS=/etc/radio-vpn-backup.recipients
 KEEP_VPS=3
 ```
 
@@ -115,7 +119,7 @@ d'etat depuis la derniere archive. Restaurer une archive ancienne peut perdre un
 ## 4. Recuperation sur Synology
 
 Copier ce depot sur le NAS. Prerequis : Bash, client OpenSSH, `sha256sum`, Python 3
-(paquet Python3 DSM si absent). Aucun outil de dechiffrement n'est necessaire pour recuperer.
+(paquet Python3 DSM si absent).
 Copier `nas.conf.example` vers un fichier prive `nas.conf`, puis adapter les chemins,
 le nom du VPS, son adresse publique et son port SSH. Utiliser un dossier local par VPS,
 sans droits pour les autres utilisateurs DSM : `umask 077`, fichiers 0600, dossiers 0700.
@@ -145,12 +149,14 @@ Les autres fichiers sont ignores. Le verrou `.pull.lock` empeche deux collectes 
 Sur le NAS, dans le dossier du VPS :
 
 ```bash
-sha256sum -c NOM_ARCHIVE.tar.gz.age.sha256
+sha256sum -c NOM_ARCHIVE.tar.gz.sha256
+# Verifier aussi la structure gzip sans extraire de secrets :
+gzip -t NOM_ARCHIVE.tar.gz
 ```
 
-Le SHA-256 verifie le transfert ; le dechiffrement `age` authentifie le contenu chiffre.
-Le VPS ne possede pas la cle privee : il ne peut pas tester le dechiffrement a chaque sauvegarde.
-Tester regulierement une archive avec la cle de secours, dans un dossier prive hors production.
+Le SHA-256 verifie le transfert et les empreintes internes controlent les fichiers
+pendant la restauration. Ce n'est pas une signature : utiliser une archive provenant
+d'une source de confiance. Tester regulierement la restauration hors production.
 Pour reconstruire le serveur, suivre [radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore)
 et le [plan de recette](docs/validation.md).
 
@@ -160,8 +166,8 @@ et le [plan de recette](docs/validation.md).
 - Echec PKI/SQLite : aucune nouvelle archive n'est publiee ; verifier l'etat UI/CRL et les donnees. Ne pas supprimer l'index.
 - Recuperation interrompue : les anciennes archives restent presentes. Relancer ; si `.pull.lock` subsiste apres un arret brutal, verifier qu'aucune tache ne tourne avant de le retirer.
 - Verifier les dates des sauvegardes et l'espace disque, pas seulement le code retour du dernier cron.
-- La derniere version valide reste disponible si une preparation echoue, mais son age peut augmenter.
-- SHA-256 n'est pas une signature. Un VPS compromis peut chiffrer des donnees malveillantes avec la cle publique : conserver plusieurs generations et verifier les restaurations.
+- La derniere version valide reste disponible si une preparation echoue, mais son anciennete peut augmenter.
+- SHA-256 n'est pas une signature. Un VPS compromis peut produire une archive malveillante : conserver plusieurs generations et verifier les restaurations.
 - Pas de sauvegarde de l'hebergeur, de reseau OS complet, de cles SSH d'hote ou de comptes/mots de passe Linux.
 - Les personnalisations hors chemins du contrat et les versions autres que radio-v2.4 sont refusees ou non prises en charge.
 
@@ -170,5 +176,5 @@ et le [plan de recette](docs/validation.md).
 Licence [MIT](LICENSE). Outil compagnon de Radio Bonheur pour radio-vpn, derive de
 [d3vilh/openvpn-ui](https://github.com/d3vilh/openvpn-ui) ; attributions d'origine conservees.
 Tests : `python3 -B -m unittest discover -s tests -v`. La CI Linux teste la PKI jetable,
-SQLite, le format, les permissions, les refus de chemins dangereux, le chiffrement
+SQLite, le format, les permissions, les refus de chemins dangereux, les transferts SSH simules
 et la retention. Elle ne valide pas les services d'un vrai VPS ou DSM.

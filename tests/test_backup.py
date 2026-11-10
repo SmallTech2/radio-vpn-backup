@@ -1,11 +1,7 @@
-import copy
 import datetime as dt
-import importlib.util
 import io
-import json
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import tarfile
@@ -15,7 +11,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import snapshot
-from retention import retained
+from retention import retained, prune
 from fixtures import installation
 
 
@@ -24,10 +20,27 @@ class Retention(unittest.TestCase):
         names = []
         for offset in range(50):
             day = dt.datetime(2026, 11, 10) - dt.timedelta(days=offset)
-            names.extend(day.strftime("%Y%m%dT%H%M%SZ") + f"-{n:08x}.tar.gz.age" for n in (1, 2))
+            names.extend(day.strftime("%Y%m%dT%H%M%SZ") + f"-{n:08x}.tar.gz" for n in (1, 2))
         keep = retained(names)
         self.assertEqual(len(keep), 9)  # Deux des quatre semaines sont deja dans les sept jours.
         self.assertTrue(all("-00000002." in n for n in keep))
+
+    def test_prune_plain_archives_and_sidecars_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = pathlib.Path(directory)
+            names = []
+            for offset in range(30):
+                day = dt.datetime(2026, 11, 10) - dt.timedelta(days=offset)
+                name = day.strftime("%Y%m%dT%H%M%SZ") + "-aaaaaaaa.tar.gz"
+                names.append(name)
+                (folder / name).write_bytes(b"fixture")
+                (folder / (name + ".sha256")).write_text("fixture\n")
+            (folder / "notes.txt").write_text("keep\n")
+            prune(folder, 3, 2)
+            keep = retained(names, 3, 2)
+            self.assertEqual({p.name for p in folder.glob("*.tar.gz")}, keep)
+            self.assertEqual({p.name.removesuffix(".sha256") for p in folder.glob("*.sha256")}, keep)
+            self.assertEqual((folder / "notes.txt").read_text(), "keep\n")
 
 
 @unittest.skipIf(os.name == "nt", "Integration Linux (cp, uid/gid et OpenSSL)")
@@ -53,6 +66,10 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(manifest["files"]["usr/share/easy-rsa/pki/private/ca.key"]["mode"], 0o600)
         self.assertEqual(manifest["files"]["etc/openvpn/pki"]["target"], "/usr/share/easy-rsa/pki")
         self.assertEqual(manifest["deployment"]["network"], "10.3.0.0/16")
+        # Une archive classique peut etre lue directement et gzip detecte une troncature.
+        self.assertEqual(subprocess.run(["gzip", "-t", str(archive)], capture_output=True).returncode, 0)
+        archive.write_bytes(archive.read_bytes()[:-8])
+        self.assertNotEqual(subprocess.run(["gzip", "-t", str(archive)], capture_output=True).returncode, 0)
 
     def test_refuse_incomplete_ccd_and_missing_revocation(self):
         (self.root / "etc/openvpn/staticclients/client").unlink()
@@ -78,20 +95,6 @@ class Snapshot(unittest.TestCase):
                     if case != "tamper": target.addfile(extra)
                 with self.assertRaises((ValueError, KeyError)): snapshot.check(dest)
 
-    def test_age_roundtrip_and_ciphertext_corruption(self):
-        if not shutil.which("age"): self.skipTest("age requis")
-        archive = self.archive()
-        identity, recipient = self.folder / "identity", self.folder / "recipient"
-        subprocess.run(["age-keygen", "-o", str(identity)], check=True, capture_output=True)
-        with recipient.open("wb") as out:
-            subprocess.run(["age-keygen", "-y", str(identity)], check=True, stdout=out)
-        encrypted, decrypted = self.folder / "backup.age", self.folder / "decrypted.tar.gz"
-        subprocess.run(["age", "-R", str(recipient), "-o", str(encrypted), str(archive)], check=True)
-        subprocess.run(["age", "-d", "-i", str(identity), "-o", str(decrypted), str(encrypted)], check=True)
-        self.assertEqual(archive.read_bytes(), decrypted.read_bytes())
-        data = bytearray(encrypted.read_bytes()); data[-1] ^= 1; encrypted.write_bytes(data)
-        failed = subprocess.run(["age", "-d", "-i", str(identity), str(encrypted)], capture_output=True)
-        self.assertNotEqual(failed.returncode, 0)
 
 
 class AccessPolicy(unittest.TestCase):

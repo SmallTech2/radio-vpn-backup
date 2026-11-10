@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copie privee coherente, puis publication d'un repertoire chiffre par renommage.
+# Copie privee coherente, puis publication d'un repertoire prive par renommage.
 set -Eeuo pipefail
 umask 077
 BASE=/usr/local/lib/radio-vpn-backup
@@ -44,7 +44,6 @@ main(){
   # Fichier local d'administration, installe root:root 0600 ; jamais fourni par le NAS.
   source /etc/radio-vpn-backup.conf
   [[ "$KEEP_VPS" =~ ^[0-9]+$ ]] && (( KEEP_VPS >= 2 && KEEP_VPS <= 30 )) || die 'KEEP_VPS attendu entre 2 et 30.'
-  [[ -s "$RECIPIENTS" ]] || die 'Cle publique de chiffrement absente.'
   install -d -m 700 "$STATE"
   exec 9>"$STATE/backup.lock"
   flock -n 9 || die 'Une sauvegarde est deja en cours.'
@@ -67,15 +66,15 @@ main(){
   systemctl stop openvpn-ui.service
   python3 "$BASE/snapshot.py" create / "$WORK/snapshot"
   resume || die 'Impossible de relancer UI/CRL.'
-  log 'Copie terminee ; administration disponible. Verification et chiffrement.'
+  log 'Copie terminee ; administration disponible. Verification de l archive.'
   python3 "$BASE/snapshot.py" pack "$WORK/snapshot" "$WORK/backup.tar.gz"
   gzip -t "$WORK/backup.tar.gz"
   python3 "$BASE/snapshot.py" check "$WORK/backup.tar.gz"
   local id
   id="$(date -u +%Y%m%dT%H%M%SZ)-$(openssl rand -hex 4)"
   mkdir "$WORK/publish"
-  age -R "$RECIPIENTS" -o "$WORK/publish/backup.tar.gz.age" "$WORK/backup.tar.gz"
-  (cd "$WORK/publish"; sha256sum backup.tar.gz.age > SHA256SUMS; sha256sum -c SHA256SUMS >/dev/null)
+  mv -- "$WORK/backup.tar.gz" "$WORK/publish/backup.tar.gz"
+  (cd "$WORK/publish"; sha256sum backup.tar.gz > SHA256SUMS; sha256sum -c SHA256SUMS >/dev/null)
   chown -R root:radio-vpn-backup "$WORK/publish"
   chmod 750 "$WORK/publish"
   chmod 640 "$WORK/publish/"*
@@ -83,6 +82,6 @@ main(){
   [[ $(stat -c %d "$STATE") == $(stat -c %d "$EXPORT") ]] || die 'STATE et EXPORT doivent etre sur le meme systeme de fichiers.'
   mv -T -- "$WORK/publish" "$EXPORT/$id"
   python3 "$BASE/snapshot.py" prune "$EXPORT" "$KEEP_VPS"
-  log "Sauvegarde publiee : $id (chiffree)."
+  log "Sauvegarde publiee : $id (.tar.gz)."
 }
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then main "$@"; fi

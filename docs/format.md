@@ -31,7 +31,7 @@ Les proprietaires sont numeriques. La reference utilise root pour l'UI/PKI et no
 pour OpenVPN apres ouverture des cles ; les comptes Linux administrateurs ne possedent
 pas ces donnees. Les mots de passe Linux, `/etc/passwd`, `/etc/shadow`, cles SSH privees
 et cles d'hote ne sont pas copies. Les profils clients contiennent leurs cles privees :
-la sauvegarde doit toujours rester chiffree sur le NAS.
+la sauvegarde non chiffree doit rester dans un dossier prive sur le NAS. Ce choix est volontaire et le risque est accepte.
 
 Services : `openvpn@server.service`, `openvpn-ui.service`, `ssh.service`, `nftables.service`,
 `radio-renew-crl.service`, `radio-renew-crl.timer`, `logrotate.timer`, `systemd-journald.service`.
@@ -40,7 +40,7 @@ Le reseau VPN de la sauvegarde doit etre conserve ; le compte Linux et l'IPv4 pu
 
 ## Conteneur d'archive
 
-Une archive `backup.tar.gz.age` contient, apres dechiffrement :
+Une archive `backup.tar.gz` directement exploitable contient :
 
 ```text
 manifest.json
@@ -58,5 +58,5 @@ liens hors contrat et fichiers non declares. Aucun ecrit au travers d'un lien n'
 Les deux lecteurs sont autonomes ; toute evolution du format doit rester testee dans les deux depots.
 
 Publication VPS : un repertoire date `AAAAMMJJTHHMMSSZ-xxxxxxxx` contient l'archive
-chiffree et `SHA256SUMS`. Le repertoire est renomme atomiquement apres tous les controles.
+non chiffree et `SHA256SUMS`. Le repertoire est renomme atomiquement apres tous les controles.
 Le protocole SSH ne publie que ces noms strictement formes.

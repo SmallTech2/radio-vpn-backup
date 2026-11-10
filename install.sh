@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
-[[ $EUID -eq 0 && $# == 2 ]] || { echo 'Usage : sudo bash install.sh CLE_PUBLIQUE_AGE CLE_PUBLIQUE_SSH_NAS' >&2; exit 1; }
+[[ $EUID -eq 0 && $# == 1 ]] || { echo 'Usage : sudo bash install.sh CLE_PUBLIQUE_SSH_NAS' >&2; exit 1; }
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 . /etc/os-release
 [[ $ID == debian && $VERSION_ID == 13 ]] || exit 1
-[[ -f "$1" && -f "$2" ]] || exit 1
-grep -Eq '^age1[0-9a-z]+$' "$1" || { echo 'Fichier destinataire age natif attendu.' >&2; exit 1; }
-[[ $(grep -c '^ssh-ed25519 ' "$2") == 1 && $(wc -l < "$2") == 1 ]] || { echo 'Une seule cle publique ED25519 attendue.' >&2; exit 1; }
-ssh-keygen -lf "$2" >/dev/null
+[[ -f "$1" ]] || exit 1
+[[ $(grep -c '^ssh-ed25519 ' "$1") == 1 && $(wc -l < "$1") == 1 ]] || { echo 'Une seule cle publique ED25519 attendue.' >&2; exit 1; }
+ssh-keygen -lf "$1" >/dev/null
 ! getent passwd radio-vpn-backup >/dev/null || { echo 'Compte radio-vpn-backup existant : installation refusee.' >&2; exit 1; }
 [[ ! -e /etc/radio-vpn-backup.conf ]] || exit 1
 apt-get update
-apt-get install -y --no-install-recommends age python3 cron util-linux
+apt-get install -y --no-install-recommends python3 cron util-linux
 python3 "$ROOT/scripts/snapshot.py" preflight /
 install -d -m 755 /usr/local/lib/radio-vpn-backup
 install -m 755 "$ROOT/scripts/backup.sh" "$ROOT/scripts/export.sh" "$ROOT/scripts/snapshot.py" /usr/local/lib/radio-vpn-backup/
@@ -22,11 +21,10 @@ install -d -m 700 /var/lib/radio-vpn-backup
 install -d -m 750 -o root -g radio-vpn-backup /var/lib/radio-vpn-export
 install -d -m 755 -o root -g root /var/lib/radio-vpn-backup-user
 install -d -m 750 -o root -g radio-vpn-backup /var/lib/radio-vpn-backup-user/.ssh
-{ printf 'restrict,command="/usr/local/lib/radio-vpn-backup/export.sh" '; cat -- "$2"; } > /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
+{ printf 'restrict,command="/usr/local/lib/radio-vpn-backup/export.sh" '; cat -- "$1"; } > /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
 chown root:radio-vpn-backup /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
 chmod 640 /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
-install -m 600 "$1" /etc/radio-vpn-backup.recipients
-printf 'RECIPIENTS=/etc/radio-vpn-backup.recipients\nKEEP_VPS=3\n' > /etc/radio-vpn-backup.conf
+printf 'KEEP_VPS=3\n' > /etc/radio-vpn-backup.conf
 chmod 600 /etc/radio-vpn-backup.conf
 # logger collecte les messages sans creer un nouveau journal non gere par logrotate.
 printf 'SHELL=/bin/bash\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n17 2 * * * root /bin/bash -o pipefail -c '\''/usr/local/sbin/radio-vpn-backup 2>&1 | /usr/bin/logger -t radio-vpn-backup'\''\n' > /etc/cron.d/radio-vpn-backup

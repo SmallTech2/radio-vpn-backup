@@ -17,7 +17,7 @@ class Pull(unittest.TestCase):
             (root / "remote").mkdir()
             ids = [f"202611{day:02d}T020000Z-aaaaaaaa" for day in (8, 9, 10)]
             for name in ids:
-                (root / "remote" / name).write_bytes((name + "-ciphertext-fixture").encode())
+                (root / "remote" / name).write_bytes((name + "-archive-fixture").encode())
             script = root / "bin/ssh"
             script.write_text('''#!/usr/bin/env python3
 import hashlib,os,pathlib,sys
@@ -46,15 +46,15 @@ else: sys.exit(1)
             self.assertEqual(run().returncode, 0)
             self.assertEqual(run().returncode, 0)  # Fichiers existants reverifies.
             dest = root / "backups/fixture"
-            self.assertEqual(len(list(dest.glob("*.age"))), 3)
+            self.assertEqual(len(list(dest.glob("*.tar.gz"))), 3)
             new = "20261111T020000Z-aaaaaaaa"
             (root / "remote" / new).write_bytes(b"new fixture")
             self.assertNotEqual(run("yes").returncode, 0)
-            self.assertFalse((dest / (new + ".tar.gz.age")).exists())
-            self.assertEqual(len(list(dest.glob("*.age"))), 3)
+            self.assertFalse((dest / (new + ".tar.gz")).exists())
+            self.assertEqual(len(list(dest.glob("*.tar.gz"))), 3)
             self.assertFalse((dest / ".pull.lock").exists())
             self.assertFalse(list(dest.glob("*.partial")))
             self.assertEqual(run().returncode, 0)
-            corrupt = dest / (new + ".tar.gz.age")
+            corrupt = dest / (new + ".tar.gz")
             corrupt.write_bytes(b"corrupt")
             self.assertNotEqual(run().returncode, 0)
