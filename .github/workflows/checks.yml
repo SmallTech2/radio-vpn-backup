@@ -32,7 +32,7 @@ jobs:
           cat "$RUNNER_TEMP/tests.log"
       - name: Real SSH and restricted rsync on loopback only
         run: |
-          if ! sudo python3 -B -m unittest discover -s tests -p test_rsync.py -v > "$RUNNER_TEMP/rsync-tests.log" 2>&1; then
+          if ! sudo python3 -B tests/test_rsync.py -v > "$RUNNER_TEMP/rsync-tests.log" 2>&1; then
             cat "$RUNNER_TEMP/rsync-tests.log"
             python3 -c 'import pathlib,sys; s=pathlib.Path(sys.argv[1]).read_text()[-6000:]; print("::error title=Restricted rsync::"+s.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))' "$RUNNER_TEMP/rsync-tests.log"
             exit 1

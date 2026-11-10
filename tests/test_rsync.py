@@ -151,4 +151,7 @@ LogLevel VERBOSE
             with self.subTest(command=command): self.assertNotEqual(self.ssh_command(command).returncode, 0)
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    if not AVAILABLE:
+        raise SystemExit("Ces tests directs exigent root, sshd, rsync et rrsync ; aucun saut silencieux.")
+    unittest.main()
