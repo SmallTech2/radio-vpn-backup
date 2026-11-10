@@ -30,7 +30,7 @@ df -h /var/lib
 
 La commande manuelle dans un terminal propose le chiffrement, avec **Non** par défaut ;
 ce choix ne change pas `ENCRYPT` pour cron. Les lancements sans terminal en entrée, dont
-le cron de 02:17, ne posent aucune question et utilisent la configuration.
+le cron à l’heure choisie, ne posent aucune question et utilisent la configuration.
 La commande manuelle affiche directement son résultat ; seuls les passages par cron
 envoient leurs messages au tag journald `radio-vpn-backup`. Un retour non nul indique
 un échec ; vérifier la date de la dernière archive complète, pas seulement sa présence.
@@ -120,3 +120,17 @@ La sauvegarde ne couvre pas l'OS complet, les mots de passe Linux ou les clés S
 Les ACL personnalisées et les chemins hors contrat demandent une analyse distincte.
 La cohérence suppose une fenêtre sans opérations PKI manuelles ; l’installation ne fournit
 pas de transaction globale entre SQLite, PKI et CCD. Tester la restauration régulièrement.
+
+## Changer l’heure d’une installation existante
+
+**VPS — compte administrateur avec sudo :** ne pas relancer l’installateur.
+
+```bash
+sudoedit /etc/cron.d/radio-vpn-backup
+```
+
+Sur la ligne de la tâche, modifier seulement les deux premiers champs : **minute puis
+heure**, selon l’heure locale du VPS. Par exemple, `45 3 * * * root ...` signifie chaque
+jour à 03:45 ; conserver toute la commande existante après les champs horaires. Cron
+relit le fichier automatiquement. Décaler également la collecte NAS si nécessaire.
+L’horaire ne participe pas au choix du chiffrement : cron reste toujours non interactif.

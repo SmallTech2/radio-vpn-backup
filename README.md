@@ -5,6 +5,8 @@ Sauvegarde d'un VPS Debian 13 AMD64 installé avec
 La compatibilité dépend des [composants présents](docs/format.md#compatibilité),
 pas du numéro de version. La version d’origine est conservée dans la sauvegarde.
 Le VPS prépare une archive chaque jour par cron ; le Synology la récupère par SSH.
+L’installation demande l’heure au format `HH:MM` (défaut **02:17**, heure locale du VPS)
+et l’inscrit dans `/etc/cron.d/radio-vpn-backup`.
 **Le VPS ne contacte jamais le NAS.** Le même compte Linux `radio-vpn-backup` sert aux
 deux méthodes de collecte ; il ne reçoit ni sudo ni shell libre.
 
@@ -34,7 +36,7 @@ La copie suspend brièvement l'UI, mais ne redémarre pas OpenVPN ni ses clients
 - **Lancement manuel dans un terminal :** « Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ».
   Entrée ou `n` produit une `.tar.gz` sans age. `o` utilise les destinataires publics configurés
   ou demande le chemin de leur fichier s’il manque. Ce choix ne modifie pas la configuration.
-- **Cron à 02:17, sans interaction :** `ENCRYPT=false` produit une `.tar.gz` ; `ENCRYPT=true`
+- **Cron quotidien, sans interaction :** `ENCRYPT=false` produit une `.tar.gz` ; `ENCRYPT=true`
   produit une `.tar.gz.age` avec les destinataires configurés. Aucune question n’est posée.
 
 Le [guide de chiffrement facultatif](docs/encryption.md) explique la préparation des clés.

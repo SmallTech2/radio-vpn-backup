@@ -175,7 +175,7 @@ sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 ```
 
 Pour la première recette standard, répondre **Entrée** ou **n** à la question de
-chiffrement du lancement manuel. Le cron de 02:17 ne pose aucune question et utilise
+chiffrement du lancement manuel. Le cron à l’heure choisie ne pose aucune question et utilise
 `ENCRYPT` : conserver `ENCRYPT=false` pour les sauvegardes automatiques non chiffrées. La configuration doit également indiquer
 `KEEP_VPS=3`. Le dernier répertoire daté doit contenir `backup.tar.gz` et `SHA256SUMS`.
 Les [contrôles complets d'archive](installation.md#7-faire-et-vérifier-la-première-sauvegarde-sans-chiffrement)
@@ -223,7 +223,9 @@ Aucun second mot de passe rsync n'est configuré : l'accès passe par la clé SS
 `radio-vpn-backup`. Si ABB exige une autre commande ou un autre mécanisme, conserver
 l'erreur exacte sans retirer la commande forcée.
 
-Cron prépare à **02:17 heure du VPS** ; ABB a l'heure du NAS. Vérifier `timedatectl` sur
+L’installation demande l’heure quotidienne au format **HH:MM**, avec **02:17** par
+défaut, selon l’heure locale du VPS. Consulter `/etc/cron.d/radio-vpn-backup` pour
+retrouver l’horaire choisi ; ABB utilise l’heure du NAS. Vérifier `timedatectl` sur
 le VPS et l'heure DSM, puis choisir l'horaire en conséquence. ABB assure sa rétention ;
 `DAILY`/`WEEKLY` du collecteur alternatif n'ont aucun effet sur ABB. Le VPS garde toujours
 ses 3 archives par défaut, même si ABB ne collecte plus : surveiller les deux tâches.

@@ -188,6 +188,11 @@ sudo cat /etc/radio-vpn-backup.conf
 sudo systemctl is-active cron
 ```
 
+L’installateur demande l’heure quotidienne de sauvegarde au format `HH:MM`, en heure
+locale du VPS. Entrée conserve **02:17** ; les valeurs hors `00:00`–`23:59` sont refusées.
+Sans terminal en entrée, l’installation conserve **02:17** sans attendre de saisie.
+L’horaire est enregistré dans `/etc/cron.d/radio-vpn-backup`.
+
 Le script installe Python 3, cron et util-linux si nécessaire, les scripts sous
 `/usr/local/lib/radio-vpn-backup`, la commande `/usr/local/sbin/radio-vpn-backup`, le
 compte VPS `radio-vpn-backup` et sa clé autorisée. Il n'installe pas `age`.
@@ -212,7 +217,7 @@ autorisé sans retirer l'administrateur. Cette personnalisation n'est pas faite 
 
 En lançant la commande dans votre terminal, répondre **Entrée** ou **n** à
 « Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ». Ce choix vaut uniquement pour
-cette exécution ; le cron de 02:17 reste sans interaction et lit `ENCRYPT` dans la configuration.
+cette exécution ; le cron à l’heure choisie reste sans interaction et lit `ENCRYPT` dans la configuration.
 
 **VPS — administrateur :**
 
@@ -332,7 +337,8 @@ printf 'umask 077\nexport PATH=%q\n%q %q %q >> %q 2>&1\n' \
 1. **Panneau de configuration > Planificateur de tâches > Créer > Tâche planifiée > Script défini par l'utilisateur**.
 2. Nom : `Collecte radio-vpn vps1`. Utilisateur : **`vpnbackup`**, pas root ni l'administrateur.
 3. Planification quotidienne après la préparation VPS, avec une marge suffisante.
-   Le cron VPS est à **02:17, heure du VPS**. Vérifier `timedatectl` sur le VPS et `date`
+   Le cron VPS utilise l’heure choisie à l’installation (**02:17 par défaut**, heure du VPS).
+   Consulter `/etc/cron.d/radio-vpn-backup` pour retrouver cette heure. Vérifier `timedatectl` sur le VPS et `date`
    sur le NAS : 03:00 NAS ne convient que si le décalage de fuseaux et la durée le permettent.
 4. Dans **Paramètres de tâche > Exécuter la commande**, coller exactement les lignes affichées.
    Le PATH explicite évite de dépendre du profil du terminal interactif.

@@ -61,7 +61,8 @@ fichier requis manque, sans revenir silencieusement à une archive non chiffrée
 
 ### Sauvegarde automatique : configuration uniquement
 
-Le cron de **02:17 heure du VPS** n’a pas de terminal en entrée et ne pose jamais de
+Le cron, à l’heure choisie pendant l’installation (**02:17 par défaut**, heure du VPS),
+n’a pas de terminal en entrée et ne pose jamais de
 question. Il utilise seulement `/etc/radio-vpn-backup.conf`. Pour chiffrer ces exécutions :
 
 ```bash
