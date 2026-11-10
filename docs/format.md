@@ -4,12 +4,41 @@ Cette page est une référence technique. Pour une première utilisation, suivre
 [guide d'installation](installation.md). Le [chiffrement facultatif](encryption.md)
 est décrit séparément ; il ne change pas le contenu interne de l'archive.
 
-Reference examinee : radio-v2.4, commit `298667782ea9be0e024ad9b634232e6ce2c8db39`.
 L'installateur `Radio/deploy-vps.sh` refuse un runtime, une configuration OpenVPN, une
 PKI ou `/etc/radio-vpn-deployed` existants. `generate_ca_and_server_certs.sh init-pki`
 refuse une CA existante. La restauration ne doit appeler ni cet installateur sur les
 donnees restaurees, ni `-initialize-only`, ni une commande de generation de CA.
 Aucune adaptation du depot radio-vpn n'est appliquee par ces deux outils.
+
+## Compatibilité
+
+La sauvegarde ne filtre pas les installations par numéro de version. Elle contrôle les
+composants aux chemins ci-dessous. Une installation radio-v2.1 peut être sauvegardée
+sans mettre à jour le VPN ni modifier son fichier de déploiement.
+
+**Indispensables :** les quatre arborescences Easy-RSA, OpenVPN, runtime UI et scripts ;
+la configuration serveur et le modèle client ; le dossier CCD ; la PKI avec CA et clés,
+certificat serveur, index, compteur de série, compteur CRL, vars, CRL, DH et clé tls-crypt ;
+le binaire UI exécutable, sa configuration, sa base SQLite et ses ressources ; le fichier
+d’environnement UI, les métadonnées de déploiement, l’unité UI et les deux unités ainsi
+que le script de renouvellement CRL. Ces derniers sont nécessaires au mécanisme existant
+de suspension du renouvellement pendant la copie.
+
+**Facultatifs :** les fichiers de référence nftables, SSH et son helper, la désactivation
+IPv6, logrotate et les limites journald. Ils sont copiés seulement s’ils existent ; leur
+absence n’empêche pas la sauvegarde. Ne pas les créer artificiellement pour passer un contrôle.
+Un élément facultatif présent sous un type incorrect est refusé.
+
+La copie SQLite est contrôlée, ainsi que les correspondances clés/certificats, les
+révocations et les IP fixes. Le réseau déclaré dans les métadonnées doit correspondre à
+la directive serveur OpenVPN. Une incohérence bloque la publication de l’archive.
+Le contenu original de /etc/radio-vpn-deployed est conservé, avec la version et les commits
+d’origine ; aucune valeur n’est remplacée par la version courante.
+
+**La compatibilité de restauration est distincte.** Le projet radio-vpn-restore reste
+inchangé et impose actuellement radio-v2.4 et sa liste complète de fichiers. La production
+et la vérification d’une archive radio-v2.1 ne signifient donc pas que cet outil accepte
+déjà sa restauration. Vérifier ce point avant toute bascule ou suppression du serveur source.
 
 ## Liste des elements
 
@@ -55,7 +84,9 @@ payload/usr/...
 ```
 
 `manifest.json` : `format: 1`, date UTC, metadonnees de deploiement, versions des paquets,
-comptes sudo candidats et `files` indexe par chemin relatif. Chaque entree indique
+comptes sudo candidats et `files` indexe par chemin relatif.
+Le champ `missing_optional` liste les fichiers facultatifs absents ; ils ne figurent
+pas dans l’inventaire des fichiers copiés. La version source figure dans `deployment.release_tag`. Chaque entree indique
 type, mode, UID/GID, SHA-256 pour un fichier, ou cible pour un lien. Le lecteur refuse
 doublons, chemins absolus/traversants, fichiers speciaux, modes setuid/setgid/sticky,
 liens hors contrat et fichiers non declares. Aucun ecrit au travers d'un lien n'est autorise.

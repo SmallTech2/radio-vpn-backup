@@ -32,8 +32,9 @@ Références primaires : [guide Synology des serveurs de fichiers](https://kb.sy
 
 ## 1. Prérequis et rôles
 
-- **VPS** : Debian 13 AMD64, radio-vpn radio-v2.4 complètement installé, SSH par clé
+- **VPS** : Debian 13 AMD64, radio-vpn complètement installé, SSH par clé
   administrateur vérifié, espace libre et accès sortant aux dépôts Debian/GitHub.
+  Les [composants requis](format.md#compatibilité) sont contrôlés sans imposer un numéro de version.
 - **NAS** : modèle/DSM et stockage pris en charge par ABB, paquet ABB installé et activé,
   espace disponible et accès réseau au port SSH public du VPS, même sans OpenVPN.
 - **Poste d'administration** : accès SSH administrateur au VPS et navigateur DSM pour ABB.

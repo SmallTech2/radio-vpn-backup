@@ -1,7 +1,9 @@
 # radio-vpn-backup
 
 Sauvegarde d'un VPS Debian 13 AMD64 installé avec
-[radio-vpn radio-v2.4](https://github.com/SmallTech2/radio-vpn/tree/radio-v2.4).
+[radio-vpn](https://github.com/SmallTech2/radio-vpn).
+La compatibilité dépend des [composants présents](docs/format.md#compatibilité),
+pas du numéro de version. La version d’origine est conservée dans la sauvegarde.
 Le VPS prépare une archive chaque jour par cron ; le Synology la récupère par SSH.
 **Le VPS ne contacte jamais le NAS.** Le même compte Linux `radio-vpn-backup` sert aux
 deux méthodes de collecte ; il ne reçoit ni sudo ni shell libre.

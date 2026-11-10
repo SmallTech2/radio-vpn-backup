@@ -25,10 +25,12 @@ adresse ni un compte. Pour un autre VPS, utiliser un autre nom et une autre clé
 Pour un deuxième serveur, remplacer `vps1` dans les noms de clé, configuration, tâche et
 dossier, sans écraser ceux du premier serveur.
 
-**Prérequis VPS :** installation radio-vpn **radio-v2.4 terminée**, accès SSH en IPv4 et
+**Prérequis VPS :** installation radio-vpn **terminée**, accès SSH en IPv4 et
 clé administrateur fonctionnels, sudo, accès HTTPS sortant à Debian et GitHub, espace
-libre pour la copie de travail et les archives. Une installation OpenVPN personnalisée
-ou une autre version n'est pas couverte par les contrôles actuels.
+libre pour la copie de travail et les archives. Le numéro de version ne bloque pas la
+sauvegarde : les composants sont contrôlés, notamment sur une installation radio-v2.1.
+Voir les [éléments indispensables et facultatifs](format.md#compatibilité). Une
+installation OpenVPN personnalisée avec d’autres chemins n’est pas automatiquement prise en charge.
 
 **Prérequis NAS :** DSM avec Planificateur de tâches et File Station, Bash, client
 OpenSSH (`ssh`, `ssh-keygen`, `ssh-keyscan`), `sha256sum` et Python 3.8 ou ultérieur.

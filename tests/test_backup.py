@@ -43,6 +43,25 @@ class Retention(unittest.TestCase):
             self.assertEqual((folder / "notes.txt").read_text(), "keep\n")
 
 
+class DeploymentMetadata(unittest.TestCase):
+    def test_version_is_preserved_without_allowlist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / "etc").mkdir()
+            path = root / "etc/radio-vpn-deployed"
+            for version in ("radio-v2.1", "radio-v2.4", "radio-v9.7", "custom-build"):
+                with self.subTest(version=version):
+                    content = (f"release_tag={version}\nrelease_source_commit=" + "a" * 40 +
+                               "\nbinary_source_commit=" + "b" * 40 +
+                               "\npublic_ip=198.51.100.10\nnetwork=10.3.0.0/16\n")
+                    path.write_text(content)
+                    self.assertEqual(snapshot.metadata(root)["release_tag"], version)
+                    self.assertEqual(path.read_text(), content)
+            path.write_text(content.replace("release_tag=custom-build", "release_tag="))
+            with self.assertRaises(ValueError):
+                snapshot.metadata(root)
+
+
 @unittest.skipIf(os.name == "nt", "Integration Linux (cp, uid/gid et OpenSSL)")
 class Snapshot(unittest.TestCase):
     def setUp(self):
@@ -66,10 +85,49 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(manifest["files"]["usr/share/easy-rsa/pki/private/ca.key"]["mode"], 0o600)
         self.assertEqual(manifest["files"]["etc/openvpn/pki"]["target"], "/usr/share/easy-rsa/pki")
         self.assertEqual(manifest["deployment"]["network"], "10.3.0.0/16")
+        self.assertEqual(manifest["missing_optional"], [])
+        self.assertTrue(set(snapshot.OPTIONAL_FILES).issubset(manifest["files"]))
         # Une archive classique peut etre lue directement et gzip detecte une troncature.
         self.assertEqual(subprocess.run(["gzip", "-t", str(archive)], capture_output=True).returncode, 0)
         archive.write_bytes(archive.read_bytes()[:-8])
         self.assertNotEqual(subprocess.run(["gzip", "-t", str(archive)], capture_output=True).returncode, 0)
+
+    def test_v21_archive_without_optional_files_preserves_origin(self):
+        metadata = self.root / "etc/radio-vpn-deployed"
+        metadata.write_text(metadata.read_text().replace("radio-v2.4", "radio-v2.1"))
+        original = metadata.read_bytes()
+        for name in snapshot.OPTIONAL_FILES:
+            (self.root / name).unlink()
+        manifest = snapshot.check(self.archive())
+        self.assertEqual(manifest["deployment"]["release_tag"], "radio-v2.1")
+        self.assertEqual(manifest["missing_optional"], list(snapshot.OPTIONAL_FILES))
+        self.assertTrue(set(snapshot.REQUIRED_FILES).issubset(manifest["files"]))
+        self.assertFalse(set(snapshot.OPTIONAL_FILES).intersection(manifest["files"]))
+        self.assertEqual(metadata.read_bytes(), original)
+        self.assertEqual((self.folder / "snapshot/payload/etc/radio-vpn-deployed").read_bytes(), original)
+
+    def test_required_components_remain_required(self):
+        names = ("etc/openvpn/server.conf", "etc/openvpn/config/client.conf",
+                 "usr/share/easy-rsa/pki/private/ca.key",
+                 "etc/systemd/system/radio-renew-crl.timer",
+                 "opt/openvpn-ui-runtime/db/data.db")
+        for name in names:
+            with self.subTest(name=name):
+                path = self.root / name
+                content = path.read_bytes()
+                path.unlink()
+                with self.assertRaisesRegex(ValueError, "manquant|incomplet"):
+                    snapshot.preflight(self.root)
+                path.write_bytes(content)
+
+    def test_network_mismatch_refused_without_rewriting_metadata(self):
+        metadata = self.root / "etc/radio-vpn-deployed"
+        original = metadata.read_bytes()
+        server = self.root / "etc/openvpn/server.conf"
+        server.write_text(server.read_text().replace("server 10.3.0.0", "server 10.9.0.0"))
+        with self.assertRaisesRegex(ValueError, "Reseau OpenVPN incoherent"):
+            self.archive()
+        self.assertEqual(metadata.read_bytes(), original)
 
     def test_refuse_incomplete_ccd_and_missing_revocation(self):
         (self.root / "etc/openvpn/staticclients/client").unlink()

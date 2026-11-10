@@ -115,5 +115,5 @@ finissent donc par disparaître lors d'une longue panne NAS. La rétention NAS s
 au fil des collectes et ne peut pas récupérer des semaines jamais collectées.
 La sauvegarde ne couvre pas l'OS complet, les mots de passe Linux ou les clés SSH d'hôte.
 Les ACL personnalisées et les chemins hors contrat demandent une analyse distincte.
-La cohérence suppose une fenêtre sans opérations PKI manuelles ; radio-v2.4 ne fournit
+La cohérence suppose une fenêtre sans opérations PKI manuelles ; l’installation ne fournit
 pas de transaction globale entre SQLite, PKI et CCD. Tester la restauration régulièrement.

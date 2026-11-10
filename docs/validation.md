@@ -1,5 +1,15 @@
 # Recette réelle de sauvegarde
 
+## Compatibilité des installations
+
+Les tests automatisés couvrent une archive avec tous les fichiers facultatifs et une
+installation simulée radio-v2.1 sans ces fichiers : création, contrôle de l’archive,
+conservation exacte des métadonnées d’origine et inventaire des absences. Ils vérifient
+également le refus de composants indispensables manquants et d’un réseau incohérent.
+Ils ne constituent pas une sauvegarde réelle du VPS radio-v2.1 ni une validation de sa
+restauration. Le lecteur de restauration conserve ses propres restrictions de version ;
+voir la [limite de compatibilité](format.md#compatibilité).
+
 ## Méthode principale : ABB
 
 Suivre le [guide ABB](abb.md). Les tests SSH/rsync de la CI ne valident pas les sondes

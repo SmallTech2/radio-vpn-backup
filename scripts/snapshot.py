@@ -17,15 +17,22 @@ import sys
 import tarfile
 
 TREES = ("usr/share/easy-rsa", "etc/openvpn", "opt/openvpn-ui-runtime", "opt/scripts")
-FILES = (
+REQUIRED_FILES = (
     "etc/openvpn-ui.env", "etc/radio-vpn-deployed",
     "etc/systemd/system/openvpn-ui.service",
     "etc/systemd/system/radio-renew-crl.service", "etc/systemd/system/radio-renew-crl.timer",
-    "usr/local/sbin/radio-renew-crl", "usr/local/bin/radio-secure-ssh",
+    "usr/local/sbin/radio-renew-crl",
+)
+OPTIONAL_FILES = (
+    "usr/local/bin/radio-secure-ssh",
     "etc/nftables.conf", "etc/sysctl.d/99-radio-disable-ipv6.conf",
     "etc/logrotate.d/openvpn", "etc/systemd/journald.conf.d/99-radio-limits.conf",
     "etc/ssh/sshd_config", "etc/ssh/sshd_config.d/00-radio.conf",
 )
+FILES = REQUIRED_FILES + OPTIONAL_FILES
+CORE_FILES = ("etc/openvpn/server.conf", "etc/openvpn/config/client.conf")
+PKI_FILES = ("ca.crt", "private/ca.key", "private/server.key", "issued/server.crt", "ta.key",
+             "dh.pem", "index.txt", "serial", "crlnumber", "vars", "crl.pem")
 ALLOWED = TREES + FILES
 ID = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}")
 
@@ -36,8 +43,9 @@ def metadata(root):
         key, separator, value = line.partition("=")
         if separator:
             values[key] = value
-    if values.get("release_tag") != "radio-v2.4":
-        raise ValueError("Seule la reference radio-v2.4 est prise en charge.")
+    # La version est une information d'origine, pas une liste de versions autorisees.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", values.get("release_tag", "")):
+        raise ValueError("Nom de version absent ou invalide dans les metadonnees.")
     for key in ("release_source_commit", "binary_source_commit"):
         if not re.fullmatch(r"[a-f0-9]{40}", values.get(key, "")):
             raise ValueError("Metadonnees de version invalides.")
@@ -53,9 +61,16 @@ def metadata(root):
 
 def preflight(root):
     metadata(root)
-    for name in TREES + FILES:
-        if not (root / name).exists():
+    for name in TREES + ("usr/share/easy-rsa/pki", "etc/openvpn/staticclients"):
+        if not (root / name).is_dir():
             raise ValueError("Element radio-vpn manquant : " + name)
+    for name in REQUIRED_FILES + CORE_FILES + tuple("usr/share/easy-rsa/pki/" + p for p in PKI_FILES):
+        if not (root / name).is_file():
+            raise ValueError("Fichier indispensable manquant : " + name)
+    for name in OPTIONAL_FILES:
+        path = root / name
+        if (path.exists() or path.is_symlink()) and not path.is_file():
+            raise ValueError("Fichier facultatif present mais invalide : " + name)
     runtime = root / "opt/openvpn-ui-runtime"
     for name in ("openvpn-ui", "conf/app.conf", "db/data.db"):
         if not (runtime / name).is_file() or (runtime / name).is_symlink():
@@ -95,7 +110,9 @@ def create(root, output):
     payload = output / "payload"
     payload.mkdir(mode=0o700)
     # cp -a preserve egalement les proprietaires et les attributs ; aucune dereference PKI.
-    paths = [name for name in ALLOWED if name != "opt/openvpn-ui-runtime"]
+    paths = [name for name in TREES if name != "opt/openvpn-ui-runtime"]
+    paths += list(REQUIRED_FILES)
+    paths += [name for name in OPTIONAL_FILES if (root / name).exists()]
     paths += [p.relative_to(root).as_posix() for p in (root / "opt/openvpn-ui-runtime").iterdir() if p.name != "logs"]
     size = sum(p.stat().st_size for name in paths for p in ([root / name] if (root / name).is_file() else (root / name).rglob("*")) if p.is_file() and not p.is_symlink())
     if shutil.disk_usage(output).free < size * 2 + 64 * 1024 * 1024:
@@ -120,10 +137,12 @@ def create(root, output):
             shutil.rmtree(path)
         elif path.exists() or path.is_symlink():
             path.unlink()
+    validate_configuration(payload)
     validate_pki(payload)
     data = inventory(payload)
     details = dict(format=1, created_utc=dt.datetime.now(dt.timezone.utc).isoformat(),
                    deployment=metadata(root), files=data)
+    details["missing_optional"] = [name for name in OPTIONAL_FILES if not (payload / name).exists()]
     details["packages"] = subprocess.check_output(["dpkg-query", "-W", "-f=${Package}=${Version}\n"]).decode().splitlines()
     details["admin_candidates"] = []
     import grp
@@ -147,7 +166,7 @@ def command(*args):
 
 def validate_pki(payload):
     pki = payload / "usr/share/easy-rsa/pki"
-    for name in ("ca.crt", "private/ca.key", "private/server.key", "issued/server.crt", "ta.key", "dh.pem", "index.txt", "serial", "crlnumber", "vars", "crl.pem"):
+    for name in PKI_FILES:
         if not (pki / name).is_file():
             raise ValueError("PKI incomplete : " + name)
     for name in ("ca", "server"):
@@ -184,6 +203,20 @@ def validate_pki(payload):
         records.append(fields[3].upper())
     if len(records) != len(set(records)):
         raise ValueError("Serie dupliquee dans l index.")
+
+
+def validate_configuration(payload):
+    import shlex
+    networks = []
+    for line in (payload / "etc/openvpn/server.conf").read_text().splitlines():
+        fields = shlex.split(line, comments=True)
+        if fields and fields[0] == "server":
+            if len(fields) < 3:
+                raise ValueError("Directive server OpenVPN incomplete.")
+            networks.append(ipaddress.IPv4Network(fields[1] + "/" + fields[2], strict=True))
+    expected = ipaddress.IPv4Network(metadata(payload)["network"], strict=True)
+    if networks != [expected]:
+        raise ValueError("Reseau OpenVPN incoherent avec les metadonnees de deploiement.")
 
 
 def pack(folder, archive):
