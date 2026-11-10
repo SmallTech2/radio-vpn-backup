@@ -2,10 +2,15 @@
 # Commande forcee SSH : aucun shell arbitraire, aucun acces en ecriture.
 set -Eeuo pipefail
 ROOT=/var/lib/radio-vpn-export
+CONFIG=/etc/radio-vpn-backup-rsyncd.conf
 request=${SSH_ORIGINAL_COMMAND:-}
 # Le chemin de cette commande forcee reste identique pour les cles deja installees.
 # Ne jamais interpreter SSH_ORIGINAL_COMMAND avec eval ou sh -c.
 case "$request" in
+  'rsync --server --daemon .'|'/usr/bin/rsync --server --daemon .')
+    # La configuration locale impose le seul module autorise, en lecture seule.
+    exec /usr/bin/rsync --server --daemon --config="$CONFIG" .
+    ;;
   'rsync --version'|'/usr/bin/rsync --version') exec /usr/bin/rsync --version ;;
   'rsync --server '*|'/usr/bin/rsync --server '*)
     [[ -x /usr/bin/rrsync ]] || { echo 'rrsync manquant : installer le paquet rsync.' >&2; exit 1; }

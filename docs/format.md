@@ -108,11 +108,15 @@ Le NAS conserve l'extension du fichier et applique la meme retention aux deux fo
 
 ## Collecte ABB
 
-Le chemin physique reste `/var/lib/radio-vpn-export`. Pour les demandes rsync, `export.sh`
-invoque le `rrsync` du paquet Debian en lecture seule, sans suppression, avec ce répertoire
-comme racine virtuelle. Le client voit `/` ou `.` comme l'export, pas comme le VPS entier.
-`rsync --version` est la seule sonde supplémentaire explicitement autorisée.
-Les commandes libres et les options refusées par rrsync ne sont pas exécutées.
+Le chemin physique reste `/var/lib/radio-vpn-export`. En mode **module via SSH**,
+`export.sh` accepte exactement `rsync --server --daemon .` (aussi avec `/usr/bin/rsync`)
+et impose `/etc/radio-vpn-backup-rsyncd.conf` : seul le module `archives`, en lecture seule,
+est exposé. Aucun service rsync permanent, port 873 ou privilège sudo n'est nécessaire.
+Les options de suppression des sources et de déréférencement sont refusées.
+
+Les demandes shell classiques restent déléguées à `rrsync -ro -no-del`, avec l'export
+comme racine virtuelle et sans accepter `-s`. `rsync --version` et le protocole personnalisé
+`list/hash/get` restent disponibles ; les commandes libres restent refusées.
 
 ABB conserve les noms `backup.tar.gz` (ou `.age`) et `SHA256SUMS` dans les dossiers datés ;
 le collecteur personnalisé les renomme avec l'identifiant daté et un fichier `.sha256`.

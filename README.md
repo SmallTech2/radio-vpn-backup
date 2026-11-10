@@ -13,15 +13,14 @@ deux méthodes de collecte ; il ne reçoit ni sudo ni shell libre.
 Choisir une méthode et suivre son guide, sans mélanger leurs tâches ni leurs rétentions :
 
 1. **Principale : [Active Backup for Business](docs/abb.md)**, serveur de fichiers rsync
-   shell via SSH. ABB gère la collecte, le stockage des versions et la rétention NAS.
+   **module via SSH**. ABB gère la collecte, le stockage des versions et la rétention NAS.
 2. **Alternative : [collecteur personnalisé](docs/installation.md)** pour les NAS sans ABB,
    avec compte DSM dédié et tâche du planificateur.
 
-**Compatibilité ABB à confirmer sur votre DSM.** La commande forcée est conservée et
-délègue rsync à `rrsync -ro -no-del`, confiné à l'export. Les options dangereuses, dont
-`-s` / `--protect-args`, restent refusées. Si ABB les impose ou exige une sonde shell
-non autorisée, sa connexion/collecte échouera : ne pas supprimer les restrictions.
-Le guide distingue les tests rsync réels de la recette ABB qui reste nécessaire.
+La commande forcée expose uniquement le module **archives**, en lecture seule, à travers
+SSH. Aucun service rsync permanent ni port 873 n'est nécessaire. Le mode shell avec
+`--protect-args` n'est pas compatible avec `rrsync` : sélectionner **module via SSH**.
+Les tests SSH/rsync ne remplacent pas une collecte réelle réussie dans votre ABB.
 
 Le compte DSM `vpn-backup` et le partage `VPN-Backup` ne sont pas des prérequis ABB :
 ABB gère ses propres tâches et sa destination. Le compte **VPS** reste `radio-vpn-backup`.

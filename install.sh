@@ -15,6 +15,7 @@ apt-get install -y --no-install-recommends python3 cron util-linux rsync
 [[ -x /usr/bin/rrsync ]] || { echo 'rrsync fourni par rsync est requis.' >&2; exit 1; }
 python3 "$ROOT/scripts/snapshot.py" preflight /
 install -d -m 755 /usr/local/lib/radio-vpn-backup
+install -o root -g root -m 644 "$ROOT/config/rsyncd.conf" /etc/radio-vpn-backup-rsyncd.conf
 install -m 755 "$ROOT/scripts/backup.sh" "$ROOT/scripts/export.sh" "$ROOT/scripts/snapshot.py" /usr/local/lib/radio-vpn-backup/
 ln -s /usr/local/lib/radio-vpn-backup/backup.sh /usr/local/sbin/radio-vpn-backup
 useradd --system --user-group --home-dir /var/lib/radio-vpn-backup-user --shell /bin/sh radio-vpn-backup

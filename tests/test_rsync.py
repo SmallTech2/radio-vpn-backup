@@ -54,9 +54,14 @@ class RestrictedRsync(unittest.TestCase):
         cls.hostkey = cls.root / "host-key"
         for key in (cls.key, cls.hostkey):
             subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
-        # Seule la racine export est substituee ; le dispatch et rrsync sont ceux du projet/paquet.
+        # Seuls les chemins de test sont substitues ; les restrictions restent identiques.
+        module_config = cls.root / "rsyncd.conf"
+        module_config.write_text((ROOT / "config/rsyncd.conf").read_text().replace("/var/lib/radio-vpn-export", str(cls.export)))
+        module_config.chmod(0o644)
         helper = cls.root / "export.sh"
-        helper.write_text((ROOT / "scripts/export.sh").read_text().replace("ROOT=/var/lib/radio-vpn-export", "ROOT=" + str(cls.export)))
+        helper.write_text((ROOT / "scripts/export.sh").read_text()
+                          .replace("ROOT=/var/lib/radio-vpn-export", "ROOT=" + str(cls.export))
+                          .replace("CONFIG=/etc/radio-vpn-backup-rsyncd.conf", "CONFIG=" + str(module_config)))
         helper.chmod(0o755)
         cls.trace = home / "commands"; cls.trace.touch(); os.chown(cls.trace, uid, gid); cls.trace.chmod(0o600)
         wrapper = cls.root / "record-command.sh"
@@ -128,6 +133,46 @@ LogLevel VERBOSE
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout.split()[0].decode(), hashlib.sha256(self.payload).hexdigest())
         self.assertEqual(self.ssh_command("get " + self.id).stdout, self.payload)
+
+    def test_abb_module_greeting_listing_and_pull(self):
+        import shlex
+        shell_probe = self.ssh_command("rsync --server --sender -se.LsfxC")
+        self.assertNotEqual(shell_probe.returncode, 0)
+        self.assertIn(b"-s", shell_probe.stderr)
+        probe = self.ssh_command("rsync --server --daemon .")
+        self.assertTrue(probe.stdout.startswith(b"@RSYNCD:"), probe.stderr.decode())
+        listing = subprocess.run(["rsync", "--list-only", "-e", shlex.join(self.ssh), self.remote + "::"],
+                                 capture_output=True, timeout=15)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode())
+        self.assertIn(b"archives", listing.stdout)
+        for index, options in enumerate(((), ("--protect-args",))):
+            destination = self.root / ("module-download" + str(index))
+            result = self.transfer(self.remote + "::archives/", destination, *options)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertEqual((destination / self.id / "backup.tar.gz").read_bytes(), self.payload)
+        self.assertIn("rsync --server --daemon .", self.trace.read_text())
+
+    def test_abb_module_is_read_only_and_confined(self):
+        local = self.root / "module-upload"; local.write_bytes(b"refused")
+        upload = self.transfer(str(local), self.remote + "::archives/uploaded")
+        self.assertNotEqual(upload.returncode, 0)
+        self.assertFalse((self.export / "uploaded").exists())
+        link = self.export / "module-escape"
+        link.symlink_to(self.outside)
+        self.addCleanup(lambda: link.unlink(missing_ok=True))
+        for path in ("archives/../outside-public", "archives//etc/passwd", "unknown/", "archives/module-escape"):
+            with self.subTest(path=path):
+                destination = self.root / "module-negative"
+                result = self.transfer(self.remote + "::" + path, destination)
+                # Un lien peut etre transfere, mais jamais son contenu hors export.
+                self.assertTrue(result.returncode != 0 or destination.is_symlink())
+        for option in ("--remove-source-files", "--copy-links", "--copy-dirlinks", "--copy-unsafe-links"):
+            with self.subTest(option=option):
+                result = self.transfer(self.remote + "::archives/", self.root / "module-options", option)
+                self.assertNotEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual((self.export / self.id / "backup.tar.gz").read_bytes(), self.payload)
+        for request in ("rsync --server --daemon --config=/tmp/other .", "rsync --server --daemon .; id"):
+            self.assertNotEqual(self.ssh_command(request).returncode, 0)
 
     def test_push_remove_source_and_protected_args_refused(self):
         local = self.root / "local-file"; local.write_bytes(b"must-not-be-uploaded")

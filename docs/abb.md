@@ -4,31 +4,31 @@ Le VPS prépare son archive par cron. **ABB collecte et conserve les versions su
 Le projet de restauration reste inchangé. Le seul compte SSH VPS utilisé est
 `radio-vpn-backup`, déjà créé par l'installateur ; aucun deuxième compte Linux n'est nécessaire.
 
-## Statut de compatibilité : lire avant installation
+## Mode de connexion et restrictions
 
-Synology documente le mode **rsync shell via SSH**, rsync 3 ou supérieur et l'authentification
-par clé, dont ED25519 sans phrase secrète. Il ne publie pas dans ce guide l'ensemble des
-commandes de découverte exécutées par chaque version d'ABB.
+Sélectionner **rsync module via SSH**. La commande reçue est
+`rsync --server --daemon .` : le helper lance rsync pour cette seule connexion, avec
+`/etc/radio-vpn-backup-rsyncd.conf`. Aucun service rsync permanent n'est démarré et
+aucun port 873 n'est ouvert.
 
-Le projet conserve la commande forcée et délègue les demandes rsync à **`rrsync -ro -no-del`**,
-fourni par le paquet Debian. Cette restriction interdit l'envoi de fichiers au VPS, la
-suppression des sources et la lecture hors de l'export. Le client rsync standard peut
-transférer les fichiers ; **cela ne prouve pas que l'assistant de votre ABB est compatible**.
+Le seul module, **archives**, expose `/var/lib/radio-vpn-export` en lecture seule.
+La commande forcée, le compte sans sudo et les permissions de la PKI sont conservés.
+Les écritures, suppressions des sources et options de déréférencement des liens sont
+refusées. Le processus reste sous le compte `radio-vpn-backup` : `use chroot = no`
+n'accorde aucun privilège ; le confinement repose sur les contrôles natifs du module,
+les options refusées et les permissions Unix.
 
-**Limite bloquante possible : `rrsync` refuse `-s` / `--protect-args`**, car ces arguments
-pourraient lui cacher les options et chemins à contrôler. Il refuse aussi les sondes shell
-non autorisées (`uname`, `ls`, commandes composées...). Si votre ABB impose ces commandes,
-son assistant ou la collecte échouera. Ne pas retirer ces contrôles, le préfixe `command=`,
-ou remplacer la racine par `/` côté serveur pour contourner le refus.
+Le mode **shell** observé envoie `rsync --server --sender -se.LsfxC`. Son option `-s`
+cache les arguments au contrôle `rrsync`, qui la refuse. Ne pas supprimer ce contrôle :
+le mode module via SSH évite cette incompatibilité. Les transferts shell sans `-s` et le
+collecteur personnalisé restent disponibles.
 
-Dans ce cas, conserver le message ABB et utiliser l'[alternative personnalisée](installation.md)
-en attendant une analyse de la commande réellement demandée. Un shell général rendrait les
-fichiers lisibles par le compte accessibles hors de l'export et violerait l'objectif de
-confinement. La protection Unix de la PKI seule ne remplace pas cette restriction.
+Les tests automatisés vérifient le dialogue module, la collecte et les restrictions via
+un vrai SSH local. La navigation, la première collecte et la rétention dans ABB restent
+à valider sur votre NAS.
 
-Références primaires : [guide Synology des serveurs de fichiers](https://kb.synology.com/en-my/UG/Synology_ABB_admin_guide_File_Servers/4),
-[restrictions rrsync](https://raw.githubusercontent.com/RsyncProject/rsync/v3.4.1/support/rrsync.1.md),
-[contenu du paquet Debian 13](https://packages.debian.org/trixie/amd64/rsync/filelist).
+Références : [commande forcée et modules via SSH](https://raw.githubusercontent.com/RsyncProject/rsync/v3.4.1/support/rrsync.1.md),
+[configuration native des modules](https://raw.githubusercontent.com/RsyncProject/rsync/v3.4.1/rsyncd.conf.5.md).
 
 ## 1. Prérequis et rôles
 
@@ -48,7 +48,7 @@ chemin interne. Ne pas créer de tâche DSM du collecteur personnalisé pour la 
 
 SSH utilise le port **22 si votre VPS écoute bien sur 22**. Garder le port réellement
 utilisé si vous l'avez personnalisé ; ne pas modifier SSH pour revenir à 22.
-Ce mode ne demande ni agent ABB Linux, ni démon rsync, ni port TCP 873.
+Ce mode ne demande ni agent ABB Linux, ni service rsync permanent, ni port TCP 873.
 
 ## 2. Choisir la clé SSH pour ABB
 
@@ -132,19 +132,22 @@ paquets Python/cron/util-linux/rsync et le cron. Il n'installe pas age et n'arr�
 ### Si le compte et l'installation existent déjà
 
 **Ne pas relancer l'installateur ni créer un deuxième compte.** Mettre à jour seulement
-la commande forcée au chemin déjà utilisé par les clés existantes :
+la configuration du module et la commande forcée au chemin déjà utilisé par les clés existantes :
 
 **VPS — administrateur, dépôt à jour :**
 
 ```bash
 id radio-vpn-backup
 sudo test -f /etc/radio-vpn-backup.conf
+sudo install -o root -g root -m 644 config/rsyncd.conf /etc/radio-vpn-backup-rsyncd.conf
 sudo install -o root -g root -m 755 scripts/export.sh /usr/local/lib/radio-vpn-backup/export.sh
 sudo ssh-keygen -lf /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
 ```
 
 Le paquet rsync a été installé à l'étape 3. Les clés existantes gardent exactement leur
-commande forcée `export.sh`, qui sait maintenant appeler rrsync en lecture seule.
+commande forcée `export.sh`, qui utilise le module en lecture seule. Ne pas relancer
+une restauration de l’ancien helper de diagnostic après cette mise à jour. Aucun
+redémarrage de SSH ou OpenVPN n’est nécessaire.
 Si la clé ABB est déjà dans la liste d'empreintes, ne rien ajouter. Sinon, **même compte VPS** :
 
 ```bash
@@ -191,7 +194,7 @@ selon la version ; les valeurs à renseigner sont les suivantes :
 | --- | --- |
 | Type de source | Serveur de fichiers rsync, sans agent |
 | Adresse du serveur | IPv4 publique réelle du VPS, relevée chez l'hébergeur |
-| Mode de connexion | **rsync shell via SSH**, pas module/daemon |
+| Mode de connexion | **rsync module via SSH**, pas shell ni module direct sur le port 873 |
 | Port | **22** si SSH écoute sur 22, sinon son port réel |
 | Compte | **`radio-vpn-backup`** |
 | Authentification | Clé SSH, importer le fichier **privé** sans `.pub` de l'étape 2 |
@@ -206,17 +209,17 @@ Créer ensuite la tâche du serveur :
 | Champ | Choix |
 | --- | --- |
 | Mode de sauvegarde | **Multi-versionné** pour utiliser la rétention ABB |
-| Sélection distante | Racine virtuelle **`/`** et ses sous-dossiers, si l'assistant permet ce choix |
+| Sélection distante | Module **`archives`**, puis ses dossiers datés |
 | Répertoire physique correspondant | **`/var/lib/radio-vpn-export`** sur le VPS |
 | Destination locale | Stockage proposé/géré par ABB ; relever le choix réel dans l'assistant |
 | Planification | Après la préparation cron du VPS, avec marge et fuseaux horaires vérifiés |
 | Rétention | Configurer dans ABB, par exemple 7 points quotidiens et 4 hebdomadaires |
 
-**La `/` affichée à rsync est une racine virtuelle limitée par rrsync à l'export. Elle ne
-donne pas accès à la racine réelle du VPS.** Ne pas saisir `/var/lib/radio-vpn-export` comme
-chemin virtuel : il serait recherché à l'intérieur de l'export. Si ABB exige de parcourir
-la vraie racine, échoue avec `-s`, ou ne propose pas ce choix, arrêter la recette : la
-compatibilité de cette version d'ABB n'est pas établie avec ces restrictions.
+**Sélectionner le module `archives` et tout son contenu.** Il correspond à l'export,
+pas à la racine du VPS. Ne pas saisir `/var/lib/radio-vpn-export` à l'intérieur du module.
+Aucun second mot de passe rsync n'est configuré : l'accès passe par la clé SSH du compte
+`radio-vpn-backup`. Si ABB exige une autre commande ou un autre mécanisme, conserver
+l'erreur exacte sans retirer la commande forcée.
 
 Cron prépare à **02:17 heure du VPS** ; ABB a l'heure du NAS. Vérifier `timedatectl` sur
 le VPS et l'heure DSM, puis choisir l'horaire en conséquence. ABB assure sa rétention ;
@@ -284,5 +287,5 @@ Ne pas assouplir les restrictions pour une sonde inconnue sans examiner son beso
 
 Éléments vérifiables automatiquement : transferts SSH/rsync natifs en loopback, confinement,
 lecture seule et protocole personnalisé. Éléments **non vérifiés sur votre Synology** :
-sondes exactes, import de clé, navigation de sélection, première collecte, rétention et
+navigation de sélection, première collecte, rétention et
 téléchargement via ABB. La recette doit confirmer chacun d'eux avant utilisation régulière.
