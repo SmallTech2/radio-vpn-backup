@@ -26,7 +26,7 @@ command=sys.argv[-1]
 if command=='list':
  print('\\n'.join(p.name for p in sorted(root.iterdir())))
 elif command.startswith('hash '):
- print(hashlib.sha256((root/command[5:]).read_bytes()).hexdigest())
+ print(hashlib.sha256((root/command[5:]).read_bytes()).hexdigest(), 'backup.tar.gz.age' if command[5:].startswith('20261109') else 'backup.tar.gz')
 elif command.startswith('get '):
  data=(root/command[4:]).read_bytes()
  if os.environ.get('FAKE_FAIL')=='yes':
@@ -46,12 +46,13 @@ else: sys.exit(1)
             self.assertEqual(run().returncode, 0)
             self.assertEqual(run().returncode, 0)  # Fichiers existants reverifies.
             dest = root / "backups/fixture"
-            self.assertEqual(len(list(dest.glob("*.tar.gz"))), 3)
+            self.assertEqual(len([p for p in dest.iterdir() if p.name.endswith((".tar.gz", ".tar.gz.age"))]), 3)
+            self.assertTrue((dest / (ids[1] + ".tar.gz.age")).exists())
             new = "20261111T020000Z-aaaaaaaa"
             (root / "remote" / new).write_bytes(b"new fixture")
             self.assertNotEqual(run("yes").returncode, 0)
             self.assertFalse((dest / (new + ".tar.gz")).exists())
-            self.assertEqual(len(list(dest.glob("*.tar.gz"))), 3)
+            self.assertEqual(len([p for p in dest.iterdir() if p.name.endswith((".tar.gz", ".tar.gz.age"))]), 3)
             self.assertFalse((dest / ".pull.lock").exists())
             self.assertFalse(list(dest.glob("*.partial")))
             self.assertEqual(run().returncode, 0)

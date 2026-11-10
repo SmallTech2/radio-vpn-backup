@@ -1,8 +1,11 @@
 # radio-vpn-backup
 
-Preparation de sauvegardes **non chiffrees au format `.tar.gz`** d'un VPS Debian 13 AMD64 installe avec
+Preparation de sauvegardes **au format `.tar.gz` non chiffre par defaut** d'un VPS Debian 13 AMD64 installe avec
 [radio-vpn](https://github.com/SmallTech2/radio-vpn), reference **radio-v2.4**.
 Le VPS prepare les archives ; le NAS les recupere en SSH. **Le VPS ne contacte jamais le NAS.**
+
+Le chiffrement avec `age` est facultatif et active volontairement ; age n est ni installe
+ni requis pour le mode standard.
 
 Code a valider sur un VPS de test avant utilisation comme seule sauvegarde.
 Aucune Release n'est publiee. Les tests automatiques ne remplacent pas une restauration reelle.
@@ -19,11 +22,11 @@ Les journaux et l'OS complet ne sont pas sauvegardes.
 
 ## Confidentialite
 
-**Les archives ne sont pas chiffrees.** Elles contiennent des informations sensibles,
+**En mode standard, les archives ne sont pas chiffrees.** Elles contiennent des informations sensibles,
 notamment la cle privee de la CA OpenVPN et les cles privees des clients. Ce choix est
 volontaire et le risque est accepte pour simplifier la restauration d'urgence.
 Les stocker dans des dossiers prives, sans partage public ni publication GitHub.
-Le compte SSH de sauvegarde peut lire tous ces secrets dans l'archive ; limiter sa cle
+Le compte SSH de sauvegarde peut lire ces secrets dans une archive non chiffree ; limiter sa cle
 au NAS autorise. Le transport SSH protege le transfert, pas le fichier stocke sur disque.
 
 ## 1. Preparer la cle SSH du NAS
@@ -78,6 +81,7 @@ Configuration root uniquement : `/etc/radio-vpn-backup.conf` :
 
 ```bash
 KEEP_VPS=3
+ENCRYPT=false
 ```
 
 `KEEP_VPS` conserve entre 2 et 30 archives, independamment du succes des recuperations NAS.
@@ -85,6 +89,44 @@ Par defaut le VPS ne garde que les 3 dernieres : une panne NAS prolongee perd le
 intermediaires, mais la derniere sauvegarde preparee reste disponible. Surveiller l'espace disque.
 Les repertoires de travail et d'export doivent rester sur le meme systeme de fichiers
 pour que leur renommage soit atomique.
+
+### Mode securise facultatif
+
+Avec `ENCRYPT=false` (valeur par defaut), aucun outil ni aucune cle de chiffrement ne
+sont demandes. L'archive produite est `backup.tar.gz`.
+
+Pour activer `age`, generer les cles **hors du VPS** sur un poste de confiance disposant
+de cet outil :
+
+```bash
+umask 077
+age-keygen -o radio-vpn-recovery.key
+age-keygen -y radio-vpn-recovery.key > radio-vpn-recipient.txt
+```
+
+Conserver deux copies independantes de la cle privee `radio-vpn-recovery.key`, dont une
+hors ligne. Ne pas la copier sur le VPS sauvegarde. Transferer uniquement le fichier public,
+puis sur le VPS :
+
+```bash
+sudo apt install -y age
+sudo install -m 600 /chemin/radio-vpn-recipient.txt /etc/radio-vpn-backup.recipients
+sudoedit /etc/radio-vpn-backup.conf
+```
+
+Conserver `KEEP_VPS` et definir :
+
+```bash
+ENCRYPT=true
+RECIPIENTS=/etc/radio-vpn-backup.recipients
+```
+
+L'archive produite est alors `backup.tar.gz.age`. Si l'outil ou le fichier public manque,
+la sauvegarde echoue explicitement ; elle ne revient pas silencieusement au mode non chiffre.
+Tester une restauration avec la cle de secours. Pour revenir au mode standard, definir
+`ENCRYPT=false`. La collecte NAS et la retention acceptent les deux formats sans installer
+`age` sur le NAS. Utiliser les scripts VPS et NAS de ce meme depot pour le protocole
+`hash`, qui retourne l'empreinte et le nom de fichier attendu.
 
 ## 3. Cron et sauvegarde manuelle
 
@@ -152,11 +194,13 @@ Sur le NAS, dans le dossier du VPS :
 sha256sum -c NOM_ARCHIVE.tar.gz.sha256
 # Verifier aussi la structure gzip sans extraire de secrets :
 gzip -t NOM_ARCHIVE.tar.gz
+# Pour une archive chiffree, utiliser son fichier NOM_ARCHIVE.tar.gz.age.sha256.
 ```
 
 Le SHA-256 verifie le transfert et les empreintes internes controlent les fichiers
 pendant la restauration. Ce n'est pas une signature : utiliser une archive provenant
-d'une source de confiance. Tester regulierement la restauration hors production.
+d'une source de confiance. En mode age, le dechiffrement verifie aussi l'integrite du
+contenu chiffre. Tester regulierement la restauration hors production.
 Pour reconstruire le serveur, suivre [radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore)
 et le [plan de recette](docs/validation.md).
 

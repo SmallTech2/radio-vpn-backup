@@ -32,9 +32,10 @@ listing=$("${SSH[@]}" list)
 [[ -n "$listing" ]] || { echo 'Aucune archive disponible.' >&2; exit 1; }
 while IFS= read -r id; do
   [[ "$id" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$ ]] || { echo 'Identifiant distant invalide.' >&2; exit 1; }
-  hash=$("${SSH[@]}" "hash $id")
-  [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || exit 1
-  file="$DEST/$id.tar.gz"
+  checksum=$("${SSH[@]}" "hash $id")
+  read -r hash name extra <<< "$checksum"
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && ( "$name" == backup.tar.gz || "$name" == backup.tar.gz.age ) && -z "$extra" ]] || exit 1
+  file="$DEST/$id.${name#backup.}"
   if [[ ! -f "$file" ]]; then
     PART="$DEST/.$id.partial"
     "${SSH[@]}" "get $id" > "$PART"

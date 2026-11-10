@@ -10,6 +10,17 @@ UI=false
 TIMER=false
 log(){ printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 die(){ log "ERREUR : $*" >&2; exit 1; }
+prepare_publication(){
+  local name=backup.tar.gz
+  mkdir "$WORK/publish"
+  if $ENCRYPT; then
+    name=backup.tar.gz.age
+    age -R "$RECIPIENTS" -o "$WORK/publish/$name" "$WORK/backup.tar.gz"
+  else
+    mv -- "$WORK/backup.tar.gz" "$WORK/publish/$name"
+  fi
+  (cd "$WORK/publish"; sha256sum "$name" > SHA256SUMS; sha256sum -c SHA256SUMS >/dev/null)
+}
 wait_crl(){
   local state n
   for ((n=0; n<120; n++)); do
@@ -44,6 +55,13 @@ main(){
   # Fichier local d'administration, installe root:root 0600 ; jamais fourni par le NAS.
   source /etc/radio-vpn-backup.conf
   [[ "$KEEP_VPS" =~ ^[0-9]+$ ]] && (( KEEP_VPS >= 2 && KEEP_VPS <= 30 )) || die 'KEEP_VPS attendu entre 2 et 30.'
+  ENCRYPT=${ENCRYPT:-false}
+  [[ "$ENCRYPT" == true || "$ENCRYPT" == false ]] || die 'ENCRYPT doit valoir true ou false.'
+  if $ENCRYPT; then
+    command -v age >/dev/null || die 'Installer age pour activer le chiffrement.'
+    RECIPIENTS=${RECIPIENTS:-/etc/radio-vpn-backup.recipients}
+    [[ -s "$RECIPIENTS" ]] || die 'Cle publique age absente.'
+  fi
   install -d -m 700 "$STATE"
   exec 9>"$STATE/backup.lock"
   flock -n 9 || die 'Une sauvegarde est deja en cours.'
@@ -72,9 +90,7 @@ main(){
   python3 "$BASE/snapshot.py" check "$WORK/backup.tar.gz"
   local id
   id="$(date -u +%Y%m%dT%H%M%SZ)-$(openssl rand -hex 4)"
-  mkdir "$WORK/publish"
-  mv -- "$WORK/backup.tar.gz" "$WORK/publish/backup.tar.gz"
-  (cd "$WORK/publish"; sha256sum backup.tar.gz > SHA256SUMS; sha256sum -c SHA256SUMS >/dev/null)
+  prepare_publication
   chown -R root:radio-vpn-backup "$WORK/publish"
   chmod 750 "$WORK/publish"
   chmod 640 "$WORK/publish/"*
@@ -82,6 +98,6 @@ main(){
   [[ $(stat -c %d "$STATE") == $(stat -c %d "$EXPORT") ]] || die 'STATE et EXPORT doivent etre sur le meme systeme de fichiers.'
   mv -T -- "$WORK/publish" "$EXPORT/$id"
   python3 "$BASE/snapshot.py" prune "$EXPORT" "$KEEP_VPS"
-  log "Sauvegarde publiee : $id (.tar.gz)."
+  log "Sauvegarde publiee : $id (ENCRYPT=$ENCRYPT)."
 }
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then main "$@"; fi

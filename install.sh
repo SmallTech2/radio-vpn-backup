@@ -24,7 +24,7 @@ install -d -m 750 -o root -g radio-vpn-backup /var/lib/radio-vpn-backup-user/.ss
 { printf 'restrict,command="/usr/local/lib/radio-vpn-backup/export.sh" '; cat -- "$1"; } > /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
 chown root:radio-vpn-backup /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
 chmod 640 /var/lib/radio-vpn-backup-user/.ssh/authorized_keys
-printf 'KEEP_VPS=3\n' > /etc/radio-vpn-backup.conf
+printf 'KEEP_VPS=3\nENCRYPT=false\n' > /etc/radio-vpn-backup.conf
 chmod 600 /etc/radio-vpn-backup.conf
 # logger collecte les messages sans creer un nouveau journal non gere par logrotate.
 printf 'SHELL=/bin/bash\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n17 2 * * * root /bin/bash -o pipefail -c '\''/usr/local/sbin/radio-vpn-backup 2>&1 | /usr/bin/logger -t radio-vpn-backup'\''\n' > /etc/cron.d/radio-vpn-backup

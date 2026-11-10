@@ -8,14 +8,14 @@ if [[ "$request" == list ]]; then
 elif [[ "$request" =~ ^(get|hash)[[:space:]]([0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})$ ]]; then
   action=${BASH_REMATCH[1]}; id=${BASH_REMATCH[2]}
   [[ -d "$ROOT/$id" && ! -L "$ROOT/$id" ]] || exit 1
+  [[ -f "$ROOT/$id/SHA256SUMS" && ! -L "$ROOT/$id/SHA256SUMS" ]] || exit 1
+  read -r hash name extra < "$ROOT/$id/SHA256SUMS"
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && ( "$name" == backup.tar.gz || "$name" == backup.tar.gz.age ) && -z "$extra" ]] || exit 1
   if [[ "$action" == get ]]; then
-    [[ -f "$ROOT/$id/backup.tar.gz" && ! -L "$ROOT/$id/backup.tar.gz" ]] || exit 1
-    exec cat -- "$ROOT/$id/backup.tar.gz"
+    [[ -f "$ROOT/$id/$name" && ! -L "$ROOT/$id/$name" ]] || exit 1
+    exec cat -- "$ROOT/$id/$name"
   else
-    [[ -f "$ROOT/$id/SHA256SUMS" && ! -L "$ROOT/$id/SHA256SUMS" ]] || exit 1
-    read -r hash name extra < "$ROOT/$id/SHA256SUMS"
-    [[ "$hash" =~ ^[0-9a-f]{64}$ && "$name" == backup.tar.gz && -z "$extra" ]] || exit 1
-    printf '%s\n' "$hash"
+    printf '%s  %s\n' "$hash" "$name"
   fi
 else
   echo 'Commande refusee. Commandes permises : list, hash IDENTIFIANT, get IDENTIFIANT.' >&2

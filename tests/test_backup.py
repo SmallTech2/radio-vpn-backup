@@ -31,14 +31,14 @@ class Retention(unittest.TestCase):
             names = []
             for offset in range(30):
                 day = dt.datetime(2026, 11, 10) - dt.timedelta(days=offset)
-                name = day.strftime("%Y%m%dT%H%M%SZ") + "-aaaaaaaa.tar.gz"
+                name = day.strftime("%Y%m%dT%H%M%SZ") + "-aaaaaaaa.tar.gz" + (".age" if offset % 2 else "")
                 names.append(name)
                 (folder / name).write_bytes(b"fixture")
                 (folder / (name + ".sha256")).write_text("fixture\n")
             (folder / "notes.txt").write_text("keep\n")
             prune(folder, 3, 2)
             keep = retained(names, 3, 2)
-            self.assertEqual({p.name for p in folder.glob("*.tar.gz")}, keep)
+            self.assertEqual({p.name for p in folder.iterdir() if p.name.endswith((".tar.gz", ".tar.gz.age"))}, keep)
             self.assertEqual({p.name.removesuffix(".sha256") for p in folder.glob("*.sha256")}, keep)
             self.assertEqual((folder / "notes.txt").read_text(), "keep\n")
 

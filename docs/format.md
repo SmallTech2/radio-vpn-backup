@@ -40,7 +40,7 @@ Le reseau VPN de la sauvegarde doit etre conserve ; le compte Linux et l'IPv4 pu
 
 ## Conteneur d'archive
 
-Une archive `backup.tar.gz` directement exploitable contient :
+Une archive `backup.tar.gz` directement exploitable contient (mode standard) :
 
 ```text
 manifest.json
@@ -58,5 +58,10 @@ liens hors contrat et fichiers non declares. Aucun ecrit au travers d'un lien n'
 Les deux lecteurs sont autonomes ; toute evolution du format doit rester testee dans les deux depots.
 
 Publication VPS : un repertoire date `AAAAMMJJTHHMMSSZ-xxxxxxxx` contient l'archive
-non chiffree et `SHA256SUMS`. Le repertoire est renomme atomiquement apres tous les controles.
+standard `backup.tar.gz` ou facultativement `backup.tar.gz.age`, et `SHA256SUMS`. Le repertoire est renomme atomiquement apres tous les controles.
 Le protocole SSH ne publie que ces noms strictement formes.
+
+En mode `ENCRYPT=true`, le meme tar.gz est chiffre par age au format natif initial.
+Le format interne v1 ne change pas. Le protocole SSH `hash IDENTIFIANT` retourne
+`SHA256  backup.tar.gz` ou `SHA256  backup.tar.gz.age`, sans chemin arbitraire.
+Le NAS conserve l'extension du fichier et applique la meme retention aux deux formats.
