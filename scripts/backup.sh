@@ -10,6 +10,18 @@ UI=false
 TIMER=false
 log(){ printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 die(){ log "ERREUR : $*" >&2; exit 1; }
+wait_crl(){
+  local state n
+  for ((n=0; n<120; n++)); do
+    state=$(systemctl show --property=ActiveState --value radio-renew-crl.service) || return 1
+    case "$state" in
+      inactive|failed) return 0 ;;
+      active|activating|reloading|deactivating) sleep 1 ;;
+      *) return 1 ;;
+    esac
+  done
+  return 1
+}
 resume(){
   local failed=0
   if $UI; then systemctl start openvpn-ui.service || failed=1; UI=false; fi
@@ -21,7 +33,7 @@ cleanup(){
   trap - EXIT
   resume || { log 'ERREUR : reprise UI/CRL a verifier.' >&2; result=1; }
   [[ -z "$WORK" ]] || rm -rf -- "$WORK"
-  (( result == 0 )) || log 'Sauvegarde en echec ; aucune nouvelle archive publiee.' >&2
+  (( result == 0 )) || log 'Preparation ou nettoyage en echec ; verifier la derniere archive complete publiee.' >&2
   exit "$result"
 }
 main(){
@@ -41,20 +53,18 @@ main(){
   WORK=$(mktemp -d "$STATE/.work.XXXXXXXX")
   log 'Debut de sauvegarde ; OpenVPN reste actif.'
   python3 "$BASE/snapshot.py" preflight /
-  if systemctl is-active --quiet radio-renew-crl.timer; then
-    TIMER=true; systemctl stop radio-renew-crl.timer
-  fi
+  local state
+  state=$(systemctl show --property=ActiveState --value radio-renew-crl.timer)
+  case "$state" in active|activating|reloading) TIMER=true ;; inactive|failed) : ;; *) die 'Etat du timer CRL inattendu.' ;; esac
+  systemctl stop radio-renew-crl.timer
   # Arreter le timer ne tue pas un renouvellement deja lance.
-  for ((n=0; n<120; n++)); do
-    systemctl is-active --quiet radio-renew-crl.service || break
-    sleep 1
-  done
-  ! systemctl is-active --quiet radio-renew-crl.service || die 'Renouvellement CRL encore actif.'
+  wait_crl || die 'Renouvellement CRL encore actif ou etat inaccessible.'
   # Refuser une operation Easy-RSA deja engagee ; aucune operation manuelle pendant cette fenetre.
   ! pgrep -f '[/]easyrsa( |$)|[/]opt/scripts/(genclient|revoke|renew|rmcert|generate_ca)' >/dev/null || die 'Operation PKI en cours ; reessayer plus tard.'
-  if systemctl is-active --quiet openvpn-ui.service; then
-    UI=true; systemctl stop openvpn-ui.service
-  fi
+  state=$(systemctl show --property=ActiveState --value openvpn-ui.service)
+  case "$state" in active|activating|reloading) UI=true ;; inactive|failed) : ;; *) die 'Etat UI inattendu.' ;; esac
+  # Stop inconditionnel : annule aussi un demarrage/redemarrage en attente.
+  systemctl stop openvpn-ui.service
   python3 "$BASE/snapshot.py" create / "$WORK/snapshot"
   resume || die 'Impossible de relancer UI/CRL.'
   log 'Copie terminee ; administration disponible. Verification et chiffrement.'

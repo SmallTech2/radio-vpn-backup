@@ -69,7 +69,8 @@ def record(path):
     elif path.is_dir():
         item.update(type="dir")
     elif path.is_file():
-        item.update(type="file", sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+        with path.open("rb") as stream:
+            item.update(type="file", sha256=digest(stream))
     else:
         raise ValueError("Fichier special refuse.")
     return item
@@ -85,7 +86,12 @@ def create(root, output):
     payload = output / "payload"
     payload.mkdir(mode=0o700)
     # cp -a preserve egalement les proprietaires et les attributs ; aucune dereference PKI.
-    subprocess.run(["cp", "-a", "--parents", *ALLOWED, str(payload)], cwd=root, check=True)
+    paths = [name for name in ALLOWED if name != "opt/openvpn-ui-runtime"]
+    paths += [p.relative_to(root).as_posix() for p in (root / "opt/openvpn-ui-runtime").iterdir() if p.name != "logs"]
+    size = sum(p.stat().st_size for name in paths for p in ([root / name] if (root / name).is_file() else (root / name).rglob("*")) if p.is_file() and not p.is_symlink())
+    if shutil.disk_usage(output).free < size * 2 + 64 * 1024 * 1024:
+        raise ValueError("Espace libre insuffisant pour preparer la sauvegarde.")
+    subprocess.run(["cp", "-a", "--parents", *paths, str(payload)], cwd=root, check=True)
     db = payload / "opt/openvpn-ui-runtime/db/data.db"
     db_mode = stat.S_IMODE(db.stat().st_mode)
     db_uid, db_gid = db.stat().st_uid, db.stat().st_gid
@@ -190,6 +196,13 @@ def allowed(name):
     return any(name == top or name.startswith(top + "/") for top in TREES) or name in FILES
 
 
+def digest(stream):
+    value = hashlib.sha256()
+    for block in iter(lambda: stream.read(1024 * 1024), b""):
+        value.update(block)
+    return value.hexdigest()
+
+
 def check(archive):
     with tarfile.open(archive, "r:gz") as tar:
         members = tar.getmembers()
@@ -220,7 +233,7 @@ def check(archive):
             kind = "link" if member.issym() else "dir" if member.isdir() else "file"
             if (kind, member.mode, member.uid, member.gid) != (entry["type"], entry["mode"], entry["uid"], entry["gid"]):
                 raise ValueError("Metadonnees incompatibles.")
-            if member.isfile() and hashlib.sha256(tar.extractfile(member).read()).hexdigest() != entry["sha256"]:
+            if member.isfile() and digest(tar.extractfile(member)) != entry["sha256"]:
                 raise ValueError("Empreinte interne invalide.")
             if member.issym():
                 permitted = {"etc/openvpn/pki": "/usr/share/easy-rsa/pki", "opt/scripts/qrencode": "/usr/bin/qrencode"}
