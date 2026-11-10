@@ -31,9 +31,15 @@ PKI complète, certificats, révocations, IP fixes, profils clients, base SQLite
 UI, scripts et configurations du projet sont inclus. Voir la [liste exacte](docs/format.md).
 La copie suspend brièvement l'UI, mais ne redémarre pas OpenVPN ni ses clients.
 
-- **Standard :** `ENCRYPT=false`, archive `.tar.gz`, aucune dépendance à `age`.
-- **Sécurisé facultatif :** `ENCRYPT=true`, archive `.tar.gz.age` ; suivre le
-  [guide séparé](docs/encryption.md), après avoir validé le mode standard.
+- **Lancement manuel dans un terminal :** « Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ».
+  Entrée ou `n` produit une `.tar.gz` sans age. `o` utilise les destinataires publics configurés
+  ou demande le chemin de leur fichier s’il manque. Ce choix ne modifie pas la configuration.
+- **Cron à 02:17, sans interaction :** `ENCRYPT=false` produit une `.tar.gz` ; `ENCRYPT=true`
+  produit une `.tar.gz.age` avec les destinataires configurés. Aucune question n’est posée.
+
+Le [guide de chiffrement facultatif](docs/encryption.md) explique la préparation des clés.
+Age n’est nécessaire que pour une exécution chiffrée. Tout lancement sans terminal en
+entrée utilise la configuration, comme cron.
 
 **Les archives non chiffrées contiennent notamment la clé privée de la CA et les clés
 clients. Ce choix est volontaire et son risque est accepté.** Limiter l'accès aux fichiers

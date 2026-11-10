@@ -28,6 +28,9 @@ sudo cat /etc/radio-vpn-backup.conf
 df -h /var/lib
 ```
 
+La commande manuelle dans un terminal propose le chiffrement, avec **Non** par défaut ;
+ce choix ne change pas `ENCRYPT` pour cron. Les lancements sans terminal en entrée, dont
+le cron de 02:17, ne posent aucune question et utilisent la configuration.
 La commande manuelle affiche directement son résultat ; seuls les passages par cron
 envoient leurs messages au tag journald `radio-vpn-backup`. Un retour non nul indique
 un échec ; vérifier la date de la dernière archive complète, pas seulement sa présence.

@@ -27,10 +27,11 @@ le destinataire **public** `age1...`, à transmettre au VPS. Sur un poste d'un a
 utiliser l'outil age déjà installé ; les trois commandes `age-keygen`/`cat` ont le même rôle.
 La procédure standard reste disponible si votre poste ne dispose pas de cet outil.
 
-## 2. Activer sur le VPS
+## 2. Préparer le chiffrement sur le VPS
 
-**VPS — administrateur Linux, session Bash :** coller uniquement la ligne publique affichée
-sur le poste de confiance, jamais la clé privée.
+**VPS — administrateur Linux, session Bash :** installer age uniquement si vous souhaitez
+chiffrer, puis copier le destinataire public créé sur le poste de confiance. Ne jamais
+copier la clé privée sur le VPS sauvegardé.
 
 ```bash
 sudo apt update
@@ -38,26 +39,48 @@ sudo apt install -y age
 read -r -p 'Coller le destinataire PUBLIC age1... : ' AGE_RECIPIENT
 printf '%s\n' "$AGE_RECIPIENT" > "$HOME/radio-vpn-recipient.txt"
 sudo install -m 600 "$HOME/radio-vpn-recipient.txt" /etc/radio-vpn-backup.recipients
+```
+
+### Sauvegarde manuelle : choix pour une seule exécution
+
+**VPS — même administrateur, dans un terminal :**
+
+```bash
+sudo /usr/local/sbin/radio-vpn-backup
+```
+
+À « Voulez-vous chiffrer la sauvegarde avec age ? [o/N] », répondre `o` pour chiffrer.
+Entrée ou `n` produit une archive classique, même si `ENCRYPT=true` est configuré pour cron.
+La configuration n’est jamais modifiée par cette réponse.
+
+Le fichier `RECIPIENTS` configuré, ou `/etc/radio-vpn-backup.recipients` par défaut, est
+réutilisé sans redemander son chemin s’il est déjà présent et non vide. Sinon, donner
+le chemin réel du fichier de destinataires **publics** préparé ci-dessus. Le script ne
+demande pas de clé privée et n’en génère pas. Il refuse le chiffrement si age ou le
+fichier requis manque, sans revenir silencieusement à une archive non chiffrée.
+
+### Sauvegarde automatique : configuration uniquement
+
+Le cron de **02:17 heure du VPS** n’a pas de terminal en entrée et ne pose jamais de
+question. Il utilise seulement `/etc/radio-vpn-backup.conf`. Pour chiffrer ces exécutions :
+
+```bash
 sudoedit /etc/radio-vpn-backup.conf
 ```
 
-Dans l'éditeur, conserver votre valeur `KEEP_VPS` et définir :
+Conserver `KEEP_VPS` et définir :
 
 ```bash
 ENCRYPT=true
 RECIPIENTS=/etc/radio-vpn-backup.recipients
 ```
 
-Enregistrer, fermer, puis **VPS — administrateur** :
+Pour rester sans chiffrement, conserver `ENCRYPT=false` (valeur par défaut). Tout autre
+lancement sans terminal en entrée suit également cette configuration. Une dépendance
+manquante provoque un échec explicite, jamais une attente de saisie.
 
-```bash
-sudo /usr/local/sbin/radio-vpn-backup
-```
-
-Le résultat doit être `backup.tar.gz.age` dans le répertoire daté d'export. Vérifier son
-`SHA256SUMS` comme pour le mode standard, mais ne pas lancer `gzip -t` directement sur
-un `.age`. L'absence d'age ou de destinataire provoque un refus, pas un retour silencieux
-au mode non chiffré. Pour revenir au mode standard : `sudoedit` puis `ENCRYPT=false`.
+Le résultat chiffré est `backup.tar.gz.age` dans le répertoire daté d’export. Vérifier
+`SHA256SUMS` comme en mode standard ; ne pas lancer `gzip -t` directement sur un `.age`.
 
 ## 3. Collecte et restauration
 

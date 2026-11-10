@@ -10,6 +10,30 @@ UI=false
 TIMER=false
 log(){ printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 die(){ log "ERREUR : $*" >&2; exit 1; }
+configure_encryption(){
+  local answer
+  ENCRYPT=${ENCRYPT:-false}
+  [[ "$ENCRYPT" == true || "$ENCRYPT" == false ]] || die 'ENCRYPT doit valoir true ou false.'
+  # Cron n'a pas de terminal en entree : il utilise exclusivement la configuration.
+  if [[ -t 0 ]]; then
+    while true; do
+      read -r -p 'Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ' answer || die 'Saisie interrompue.'
+      case "$answer" in
+        o|O|oui|OUI) ENCRYPT=true; break ;;
+        ''|n|N|non|NON) ENCRYPT=false; break ;;
+        *) echo 'Repondre o ou n.' >&2 ;;
+      esac
+    done
+  fi
+  if $ENCRYPT; then
+    command -v age >/dev/null || die 'Chiffrement demande : installer age (sudo apt install age).'
+    RECIPIENTS=${RECIPIENTS:-/etc/radio-vpn-backup.recipients}
+    if [[ -t 0 && ! -s "$RECIPIENTS" ]]; then
+      read -r -p 'Chemin du fichier de destinataires PUBLICS age : ' RECIPIENTS || die 'Saisie interrompue.'
+    fi
+    [[ -f "$RECIPIENTS" && -s "$RECIPIENTS" ]] || die 'Fichier de destinataires publics age absent ou vide.'
+  fi
+}
 prepare_publication(){
   local name=backup.tar.gz
   mkdir "$WORK/publish"
@@ -55,13 +79,7 @@ main(){
   # Fichier local d'administration, installe root:root 0600 ; jamais fourni par le NAS.
   source /etc/radio-vpn-backup.conf
   [[ "$KEEP_VPS" =~ ^[0-9]+$ ]] && (( KEEP_VPS >= 2 && KEEP_VPS <= 30 )) || die 'KEEP_VPS attendu entre 2 et 30.'
-  ENCRYPT=${ENCRYPT:-false}
-  [[ "$ENCRYPT" == true || "$ENCRYPT" == false ]] || die 'ENCRYPT doit valoir true ou false.'
-  if $ENCRYPT; then
-    command -v age >/dev/null || die 'Installer age pour activer le chiffrement.'
-    RECIPIENTS=${RECIPIENTS:-/etc/radio-vpn-backup.recipients}
-    [[ -s "$RECIPIENTS" ]] || die 'Cle publique age absente.'
-  fi
+  configure_encryption
   install -d -m 700 "$STATE"
   exec 9>"$STATE/backup.lock"
   flock -n 9 || die 'Une sauvegarde est deja en cours.'

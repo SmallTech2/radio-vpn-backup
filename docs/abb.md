@@ -174,7 +174,9 @@ sudo ls -ld /var/lib/radio-vpn-backup /var/lib/radio-vpn-export /var/lib/radio-v
 sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 ```
 
-Pour la première recette standard, la configuration doit indiquer `ENCRYPT=false` et
+Pour la première recette standard, répondre **Entrée** ou **n** à la question de
+chiffrement du lancement manuel. Le cron de 02:17 ne pose aucune question et utilise
+`ENCRYPT` : conserver `ENCRYPT=false` pour les sauvegardes automatiques non chiffrées. La configuration doit également indiquer
 `KEEP_VPS=3`. Le dernier répertoire daté doit contenir `backup.tar.gz` et `SHA256SUMS`.
 Les [contrôles complets d'archive](installation.md#7-faire-et-vérifier-la-première-sauvegarde-sans-chiffrement)
 se font avant de configurer la collecte. Ne pas administrer la PKI pendant la copie.

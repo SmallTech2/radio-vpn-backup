@@ -210,6 +210,10 @@ autorisé sans retirer l'administrateur. Cette personnalisation n'est pas faite 
 
 ## 7. Faire et vérifier la première sauvegarde sans chiffrement
 
+En lançant la commande dans votre terminal, répondre **Entrée** ou **n** à
+« Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ». Ce choix vaut uniquement pour
+cette exécution ; le cron de 02:17 reste sans interaction et lit `ENCRYPT` dans la configuration.
+
 **VPS — administrateur :**
 
 ```bash
