@@ -1,4 +1,8 @@
-# Première installation : du VPS au NAS
+# Méthode alternative : collecteur Synology personnalisé
+
+Cette procédure conserve le collecteur `nas-pull.sh`, pour les utilisateurs sans ABB.
+Pour **Active Backup for Business**, suivre uniquement le [guide ABB](abb.md) : son
+authentification, sa tâche et sa rétention ne dépendent pas de ce compte DSM ni de ce planificateur.
 
 Suivre les étapes dans l'ordre. Chaque bloc indique la machine et le compte concernés.
 Les commandes sont à saisir dans Bash, sauf indication contraire. Conserver les sessions
@@ -187,13 +191,17 @@ Le script installe Python 3, cron et util-linux si nécessaire, les scripts sous
 compte VPS `radio-vpn-backup` et sa clé autorisée. Il n'installe pas `age`.
 La configuration doit indiquer `KEEP_VPS=3` et `ENCRYPT=false`.
 
+Le paquet `rsync` est également installé ; la commande forcée commune permet aussi la
+lecture seule rsync confinée à l'export. Cela n'impose pas d'utiliser ABB pour ce collecteur.
+
 L'installateur refuse un compte `radio-vpn-backup` ou une configuration déjà présents.
 **Il ne s'agit pas d'une commande de réinstallation.** Si l'installation est déjà terminée,
 passer à l'étape 7. Si elle est partielle, consulter le [dépannage](maintenance.md) ; ne pas
 supprimer au hasard un compte, ses fichiers ou la PKI pour forcer l'exécution.
 
-La clé autorisée impose une commande restreinte : `list`, `hash IDENTIFIANT` ou
-`get IDENTIFIANT`. Pas de shell libre, terminal, sudo, transfert de ports ou modification VPN.
+La clé autorisée impose une commande restreinte : `list`, `hash IDENTIFIANT`,
+`get IDENTIFIANT`, ou rsync en lecture seule dans l'export. Pas de shell libre, terminal,
+sudo, transfert de ports ou modification VPN.
 En mode standard, le compte peut néanmoins lire les secrets **contenus dans l'archive**.
 Si SSH utilise des règles `AllowUsers`/`AllowGroups` personnalisées, le compte doit y être
 autorisé sans retirer l'administrateur. Cette personnalisation n'est pas faite par l'outil.

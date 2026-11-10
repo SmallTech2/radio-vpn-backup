@@ -69,3 +69,16 @@ En mode `ENCRYPT=true`, le meme tar.gz est chiffre au format natif age.
 Le format interne est le même dans les deux modes. Le protocole SSH `hash IDENTIFIANT` retourne
 `SHA256  backup.tar.gz` ou `SHA256  backup.tar.gz.age`, sans chemin arbitraire.
 Le NAS conserve l'extension du fichier et applique la meme retention aux deux formats.
+
+## Collecte ABB
+
+Le chemin physique reste `/var/lib/radio-vpn-export`. Pour les demandes rsync, `export.sh`
+invoque le `rrsync` du paquet Debian en lecture seule, sans suppression, avec ce répertoire
+comme racine virtuelle. Le client voit `/` ou `.` comme l'export, pas comme le VPS entier.
+`rsync --version` est la seule sonde supplémentaire explicitement autorisée.
+Les commandes libres et les options refusées par rrsync ne sont pas exécutées.
+
+ABB conserve les noms `backup.tar.gz` (ou `.age`) et `SHA256SUMS` dans les dossiers datés ;
+le collecteur personnalisé les renomme avec l'identifiant daté et un fichier `.sha256`.
+Le contenu du tar et le format v1 ne changent pas. Voir le [guide ABB](abb.md) pour les
+limites de compatibilité, la rétention ABB et la récupération d'une archive pour restauration.

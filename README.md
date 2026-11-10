@@ -2,22 +2,27 @@
 
 Sauvegarde d'un VPS Debian 13 AMD64 installé avec
 [radio-vpn radio-v2.4](https://github.com/SmallTech2/radio-vpn/tree/radio-v2.4).
-Le VPS prépare une archive chaque jour par cron ; un compte dédié sur le Synology
-la récupère par SSH. **Le VPS ne contacte jamais le NAS.**
+Le VPS prépare une archive chaque jour par cron ; le Synology la récupère par SSH.
+**Le VPS ne contacte jamais le NAS.** Le même compte Linux `radio-vpn-backup` sert aux
+deux méthodes de collecte ; il ne reçoit ni sudo ni shell libre.
 
 ## Commencer
 
-Suivre le [guide de première installation](docs/installation.md), dans l'ordre :
+Choisir une méthode et suivre son guide, sans mélanger leurs tâches ni leurs rétentions :
 
-1. Créer le compte non administrateur `vpnbackup` sur le Synology.
-2. Générer sa clé SSH **sur le NAS**, sous ce compte ; transmettre seulement la clé publique au VPS.
-3. Installer Git et cloner ce dépôt **sur le VPS**, puis installer la sauvegarde avec sudo.
-4. Produire et vérifier une première archive, sans chiffrement.
-5. Préparer la collecte **sur le NAS**, vérifier la clé d'hôte du VPS et tester le transfert.
-6. Créer la tâche DSM sous `vpnbackup`, puis contrôler un cycle automatique complet.
+1. **Principale : [Active Backup for Business](docs/abb.md)**, serveur de fichiers rsync
+   shell via SSH. ABB gère la collecte, le stockage des versions et la rétention NAS.
+2. **Alternative : [collecteur personnalisé](docs/installation.md)** pour les NAS sans ABB,
+   avec compte DSM dédié et tâche du planificateur.
 
-Le guide indique pour chaque commande la machine, le compte et la manière d'obtenir les
-chemins réels. Git n'est pas nécessaire sur le NAS : le téléchargement des outils est expliqué.
+**Compatibilité ABB à confirmer sur votre DSM.** La commande forcée est conservée et
+délègue rsync à `rrsync -ro -no-del`, confiné à l'export. Les options dangereuses, dont
+`-s` / `--protect-args`, restent refusées. Si ABB les impose ou exige une sonde shell
+non autorisée, sa connexion/collecte échouera : ne pas supprimer les restrictions.
+Le guide distingue les tests rsync réels de la recette ABB qui reste nécessaire.
+
+Le compte DSM `vpn-backup` et le partage `VPN-Backup` ne sont pas des prérequis ABB :
+ABB gère ses propres tâches et sa destination. Le compte **VPS** reste `radio-vpn-backup`.
 
 ## Données et modes
 
@@ -36,7 +41,8 @@ l'identité de leur auteur.
 
 ## Guides
 
-- [Première installation et automatisation VPS/NAS](docs/installation.md).
+- [Active Backup for Business : installation et validation](docs/abb.md).
+- [Alternative : première installation et automatisation personnalisée](docs/installation.md).
 - [Contrôles courants et dépannage](docs/maintenance.md).
 - [Chiffrement facultatif](docs/encryption.md).
 - [Contenu et format d'archive](docs/format.md).

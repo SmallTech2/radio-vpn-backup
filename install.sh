@@ -11,7 +11,8 @@ ssh-keygen -lf "$1" >/dev/null
 ! getent passwd radio-vpn-backup >/dev/null || { echo 'Compte radio-vpn-backup existant : installation refusee.' >&2; exit 1; }
 [[ ! -e /etc/radio-vpn-backup.conf ]] || exit 1
 apt-get update
-apt-get install -y --no-install-recommends python3 cron util-linux
+apt-get install -y --no-install-recommends python3 cron util-linux rsync
+[[ -x /usr/bin/rrsync ]] || { echo 'rrsync fourni par rsync est requis.' >&2; exit 1; }
 python3 "$ROOT/scripts/snapshot.py" preflight /
 install -d -m 755 /usr/local/lib/radio-vpn-backup
 install -m 755 "$ROOT/scripts/backup.sh" "$ROOT/scripts/export.sh" "$ROOT/scripts/snapshot.py" /usr/local/lib/radio-vpn-backup/

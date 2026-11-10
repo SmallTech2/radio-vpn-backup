@@ -16,7 +16,7 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends openssl
+          sudo apt-get install -y --no-install-recommends openssl rsync openssh-server
           if ${{ matrix.encryption }}; then sudo apt-get install -y --no-install-recommends age; fi
       - name: Shell syntax
         run: |
@@ -30,3 +30,11 @@ jobs:
             exit 1
           fi
           cat "$RUNNER_TEMP/tests.log"
+      - name: Real SSH and restricted rsync on loopback only
+        run: |
+          if ! sudo python3 -B -m unittest discover -s tests -p test_rsync.py -v > "$RUNNER_TEMP/rsync-tests.log" 2>&1; then
+            cat "$RUNNER_TEMP/rsync-tests.log"
+            python3 -c 'import pathlib,sys; s=pathlib.Path(sys.argv[1]).read_text()[-6000:]; print("::error title=Restricted rsync::"+s.replace("%","%25").replace("\r","%0D").replace("\n","%0A"))' "$RUNNER_TEMP/rsync-tests.log"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/rsync-tests.log"

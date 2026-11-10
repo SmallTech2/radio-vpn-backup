@@ -3,6 +3,19 @@
 set -Eeuo pipefail
 ROOT=/var/lib/radio-vpn-export
 request=${SSH_ORIGINAL_COMMAND:-}
+# Le chemin de cette commande forcee reste identique pour les cles deja installees.
+# Ne jamais interpreter SSH_ORIGINAL_COMMAND avec eval ou sh -c.
+case "$request" in
+  'rsync --version'|'/usr/bin/rsync --version') exec /usr/bin/rsync --version ;;
+  'rsync --server '*|'/usr/bin/rsync --server '*)
+    [[ -x /usr/bin/rrsync ]] || { echo 'rrsync manquant : installer le paquet rsync.' >&2; exit 1; }
+    if [[ "$request" == /usr/bin/rsync\ * ]]; then
+      export SSH_ORIGINAL_COMMAND="rsync ${request#/usr/bin/rsync }"
+    fi
+    # Les chemins clients sont relatifs a cette racine virtuelle, jamais au VPS entier.
+    exec /usr/bin/rrsync -ro -no-del "$ROOT"
+    ;;
+esac
 if [[ "$request" == list ]]; then
   find "$ROOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -E '^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$' | sort
 elif [[ "$request" =~ ^(get|hash)[[:space:]]([0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})$ ]]; then
@@ -18,6 +31,7 @@ elif [[ "$request" =~ ^(get|hash)[[:space:]]([0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})$ ]]
     printf '%s  %s\n' "$hash" "$name"
   fi
 else
-  echo 'Commande refusee. Commandes permises : list, hash IDENTIFIANT, get IDENTIFIANT.' >&2
+  logger -t radio-vpn-backup-ssh 'Commande SSH refusee (commande libre ou sonde non autorisee ; arguments non journalises).' || true
+  echo 'Commande refusee : export list/hash/get ou rsync restreint en lecture seule uniquement.' >&2
   exit 1
 fi

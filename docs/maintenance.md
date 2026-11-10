@@ -1,5 +1,9 @@
 # Contrôles et dépannage
 
+Les commandes NAS ci-dessous concernent **le collecteur personnalisé**. Pour ABB, voir
+ses [étapes de contrôle et de diagnostic](abb.md). Les commandes VPS de préparation des
+archives restent communes aux deux méthodes.
+
 Les variables NAS de ce guide sont redéfinies sous le compte `vpnbackup` :
 
 ```bash

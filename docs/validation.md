@@ -1,5 +1,22 @@
 # Recette réelle de sauvegarde
 
+## Méthode principale : ABB
+
+Suivre le [guide ABB](abb.md). Les tests SSH/rsync de la CI ne valident pas les sondes
+internes d'ABB ; la recette sur votre NAS doit vérifier :
+
+1. Compte VPS `radio-vpn-backup` réutilisé, avec sa commande forcée et sans sudo.
+2. Clé privée importée dans ABB, empreinte d'hôte vérifiée et connexion acceptée.
+3. Sélection de la racine virtuelle export uniquement ; aucune lecture du VPS hors export.
+4. Collecte réelle complète, au-delà du simple test de connexion.
+5. Refus des écritures et de restauration ABB vers le serveur source, par conception.
+6. Téléchargement d'une archive et de `SHA256SUMS`, contrôle SHA-256 et contenu.
+7. Nouveau cycle cron puis collecte ABB automatique, et maintien des versions historiques
+   alors que le VPS purge ses anciens points.
+8. Refus expliqué, sans assouplissement, si ABB impose `-s` ou une sonde non autorisée.
+
+## Méthode alternative : collecteur personnalisé
+
 Appliquer d'abord le [guide d'installation](installation.md). Cette recette se fait sur
 des machines de test ; ne pas simuler des pannes ou des révocations sur vos clients métiers.
 
