@@ -38,6 +38,15 @@ utiliser un agent SSH ou une cle dediee sans phrase secrete, fichier prive 0600 
 
 Lire les scripts puis recuperer ce depot. Noter le commit utilise (`git rev-parse HEAD`)
 et conserver une copie : les outils ne disposent pas encore d'une Release stable.
+Par exemple, sur le VPS :
+
+```bash
+sudo apt install -y git
+git clone https://github.com/SmallTech2/radio-vpn-backup.git
+cd radio-vpn-backup
+git rev-parse HEAD
+```
+
 Transferer **uniquement** les deux fichiers publics au VPS, puis depuis ce depot :
 
 ```bash
