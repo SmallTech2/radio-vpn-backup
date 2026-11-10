@@ -1,29 +1,36 @@
-# Recette de sauvegarde et restauration
+# Recette réelle de sauvegarde
 
-Sur des machines de test uniquement, sans reutiliser une PKI de production dans un reseau actif :
+Appliquer d'abord le [guide d'installation](installation.md). Cette recette se fait sur
+des machines de test ; ne pas simuler des pannes ou des révocations sur vos clients métiers.
 
-1. Installer radio-vpn radio-v2.4, creer deux clients a IP fixes, revoquer l'un d'eux.
-2. Noter les empreintes CA/serveur/client, numeros de serie, IP fixes et entree R.
-3. Lancer une sauvegarde pendant qu'un client valide est connecte : verifier qu'il reste connecte.
-4. Recuperer depuis DSM par le compte restreint. Tester un refus de shell, de transfert de ports,
-   de lecture arbitraire et d'ecriture. Verifier SHA-256, gzip et les permissions des archives non chiffrees.
-5. Tester disque plein, archive corrompue, transfert interrompu et NAS temporairement indisponible :
-   aucune archive incomplete ne doit etre visible, les anciennes doivent rester utilisables.
-6. Preparer un autre VPS Debian 13 avec radio-vpn ; suivre le README de radio-vpn-restore.
-7. Comparer les empreintes et IP fixes. La CRL peut avoir une nouvelle date, mais l'entree R reste presente.
-8. Adapter `remote` sur le client de test si l'IP publique change ; verifier la connexion avec son certificat initial.
-9. Verifier que le certificat revoque est refuse. Creer un nouveau client, lui affecter une IP et verifier sa connexion.
-10. Tester SSH, UI via tunnel et VPN, nftables, timers, puis redemarrer le VPS de test et recommencer les controles.
-11. Simuler un echec apres remplacement : verifier le retour arriere des donnees et des services et la preservation SSH.
+## NAS Synology : éléments à valider sur votre DSM
 
-Ne pas faire fonctionner deux serveurs issus de la meme PKI comme deux autorites independantes :
-leurs index/serials pourraient diverger. Pour une bascule planifiee, arreter les ecritures sur
-l'ancien serveur, faire une derniere sauvegarde, puis le maintenir hors service apres bascule.
+1. Le compte local `vpnbackup` est non administrateur et accède seulement à son dossier personnel.
+2. La clé est créée sous ce compte, puis l'administrateur quitte sa session de préparation.
+3. Le test manuel `ssh ... list` et la collecte fonctionnent sous ce compte, sans mot de passe.
+4. La tâche DSM choisit exactement ce compte, avec le PATH réel de Bash/Python.
+5. Les ACL effectives interdisent l'accès d'un autre utilisateur aux clés et archives.
+6. Après un transfert interrompu, aucune nouvelle archive finale invalide n'apparaît.
+7. Une tâche en échec provoque la notification configurée et laisse les archives précédentes intactes.
+8. La prochaine exécution automatique de cron produit un nouveau point, puis DSM le collecte.
+9. Les SHA-256 passent ; la rétention quotidienne puis hebdomadaire s'observe au fil des semaines.
+10. Après une mise à jour/redémarrage du NAS, le PATH, les paquets, droits et tâches restent fonctionnels.
 
-Ces controles sur VPS/DSM restent a realiser. Les fixtures automatiques ne valident pas
-les reseaux d'un hebergeur, la console, le redemarrage reel ou une restauration de production.
+Un test depuis le terminal d'un administrateur NAS ne valide pas l'exécution sous `vpnbackup`.
 
-Tester les deux modes : ENCRYPT=false sans age, puis ENCRYPT=true avec une cle generee
-hors du VPS. Verifier la collecte et la retention d'un ensemble mixte, la detection du
-format a la restauration, le refus d'une mauvaise cle et le chiffrement du secours
-lorsque l'archive restauree est chiffree. Le mode standard ne doit jamais demander de cle.
+## VPS et restauration complète
+
+Avant la sauvegarde, relever l'empreinte CA, la série/empreinte d'un client de test et son
+IP fixe. Utiliser un second client de test déjà révoqué. Pendant la sauvegarde, le premier
+doit rester connecté : l'UI peut être suspendue, OpenVPN ne doit pas redémarrer.
+
+Suivre ensuite le [guide complet de restauration](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/restoration.md)
+et sa [check-list](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/validation.md) :
+ancien certificat et IP fixe conservés, certificat révoqué refusé, création d'un nouveau
+client et contrôles après redémarrage. Ne pas faire fonctionner deux CA identiques avec
+des historiques d'émission divergents ; maintenir le serveur source hors service après bascule.
+
+Tester séparément le [mode age](encryption.md), le refus d'une mauvaise clé et une collecte
+mixte. Le mode standard doit fonctionner sans age et sans demande de clé.
+
+Ces validations VPS/DSM ne sont pas déclarées réalisées par les tests automatisés.

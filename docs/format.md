@@ -1,5 +1,9 @@
 # Analyse de radio-vpn et format v1
 
+Cette page est une référence technique. Pour une première utilisation, suivre le
+[guide d'installation](installation.md). Le [chiffrement facultatif](encryption.md)
+est décrit séparément ; il ne change pas le contenu interne de l'archive.
+
 Reference examinee : radio-v2.4, commit `298667782ea9be0e024ad9b634232e6ce2c8db39`.
 L'installateur `Radio/deploy-vps.sh` refuse un runtime, une configuration OpenVPN, une
 PKI ou `/etc/radio-vpn-deployed` existants. `generate_ca_and_server_certs.sh init-pki`
@@ -61,7 +65,7 @@ Publication VPS : un repertoire date `AAAAMMJJTHHMMSSZ-xxxxxxxx` contient l'arch
 standard `backup.tar.gz` ou facultativement `backup.tar.gz.age`, et `SHA256SUMS`. Le repertoire est renomme atomiquement apres tous les controles.
 Le protocole SSH ne publie que ces noms strictement formes.
 
-En mode `ENCRYPT=true`, le meme tar.gz est chiffre par age au format natif initial.
-Le format interne v1 ne change pas. Le protocole SSH `hash IDENTIFIANT` retourne
+En mode `ENCRYPT=true`, le meme tar.gz est chiffre au format natif age.
+Le format interne est le même dans les deux modes. Le protocole SSH `hash IDENTIFIANT` retourne
 `SHA256  backup.tar.gz` ou `SHA256  backup.tar.gz.age`, sans chemin arbitraire.
 Le NAS conserve l'extension du fichier et applique la meme retention aux deux formats.
