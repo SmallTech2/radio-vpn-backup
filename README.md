@@ -1,5 +1,8 @@
 # radio-vpn-backup
 
+🌐 **Translate to English** — Pour consulter cette page en anglais, utilisez la fonction
+de traduction intégrée de votre navigateur. Copiez les commandes depuis l’original français.
+
 Prépare des sauvegardes confidentielles d’un serveur **Debian 13 AMD64 installé avec
 radio-vpn** : PKI, certificats, révocations, IP fixes, profils et données OpenVPN UI.
 Le VPS prépare l’archive ; le NAS Synology la récupère par SSH, en PULL. Le VPS ne se
