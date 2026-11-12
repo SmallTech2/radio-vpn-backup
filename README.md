@@ -23,8 +23,16 @@ ne signifie pas qu’une adaptation soit techniquement impossible.
 
 ## Installer et collecter
 
-1. Suivre la méthode principale : [Active Backup for Business, module rsync via SSH](docs/abb.md).
-2. Sans ABB, suivre l’[alternative avec collecteur personnalisé](docs/installation.md).
+**Commencer par installer radio-vpn-backup sur le VPS**, y compris après une restauration
+avec radio-vpn-restore. Configurer ensuite **une seule** des deux méthodes de collecte NAS :
+
+1. **Installation sur le VPS** : [procédure commune](docs/vps-installation.md), avec préparation de la clé publique, clonage, installation et première sauvegarde.
+2. **Collecte avec Synology ABB — méthode principale** : [configurer ABB en mode module rsync via SSH](docs/abb.md#5-configurer-abb).
+3. **Collecte sans ABB — alternative** : [guide du collecteur Synology personnalisé](docs/installation.md).
+
+La préparation de la clé SSH de collecte est un prérequis de l’installation VPS ; le
+guide commun indique où la préparer selon la méthode choisie. La collecte NAS et la
+préparation des archives sur le VPS sont deux opérations distinctes.
 
 Le compte VPS `radio-vpn-backup` est créé par l’installateur, sans sudo ni shell libre.
 Le module ABB `archives` expose seulement `/var/lib/radio-vpn-export` en lecture seule.
@@ -54,7 +62,8 @@ la clé privée de déchiffrement hors du VPS, indépendamment de la clé SSH de
 
 ## Guides
 
-[ABB](docs/abb.md) · [Collecteur personnalisé](docs/installation.md) ·
+[Installation VPS](docs/vps-installation.md) · [Collecte ABB](docs/abb.md) ·
+[Collecteur personnalisé](docs/installation.md) ·
 [Chiffrement age](docs/encryption.md) · [Maintenance](docs/maintenance.md) ·
 [Format et fichiers sauvegardés](docs/format.md).
 

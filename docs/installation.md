@@ -1,6 +1,8 @@
 # Méthode alternative : collecteur Synology personnalisé
 
-Cette procédure conserve le collecteur `nas-pull.sh`, pour les utilisateurs sans ABB.
+Ce guide concerne uniquement le collecteur `nas-pull.sh`, pour les utilisateurs sans ABB.
+L’[installation du programme sur le VPS](vps-installation.md) est commune aux deux méthodes ;
+ce guide détaille la préparation du NAS et sa collecte alternative.
 Pour **Active Backup for Business**, suivre uniquement le [guide ABB](abb.md) : son
 authentification, sa tâche et sa rétention ne dépendent pas de ce compte DSM ni de ce planificateur.
 
@@ -151,92 +153,21 @@ clé privée dans le terminal, une documentation ou un message. Noter l'empreint
 
 ## 5. Préparer Git et copier la clé publique sur le VPS
 
-**VPS — compte administrateur Linux choisi pendant l'installation radio-vpn, via SSH :**
-
-```bash
-sudo apt update
-sudo apt install -y git
-read -r -p 'Coller la ligne de clé PUBLIQUE SSH du NAS : ' NAS_PUBLIC_KEY
-PUB="$HOME/vps1-nas.pub"
-printf '%s\n' "$NAS_PUBLIC_KEY" > "$PUB"
-ssh-keygen -lf "$PUB"
-```
-
-Comparer l'empreinte avec celle de l'étape NAS. `PUB` désigne maintenant un vrai fichier
-dans le dossier personnel de l'administrateur VPS, avec la fin de ligne attendue par
-l'installateur. Ce n'est pas la clé privée et ce n'est pas un chemin à deviner.
-
-**VPS — même compte :**
-
-```bash
-cd "$HOME"
-git clone https://github.com/SmallTech2/radio-vpn-backup.git
-cd "$HOME/radio-vpn-backup"
-git rev-parse HEAD
-```
-
-Noter le commit utilisé. Si le dossier du dépôt existe déjà, ne pas le cloner par-dessus :
-vérifier `git status`, puis utiliser `git pull --ff-only` dans ce dossier s'il est propre.
+Avec la clé publique NAS de l’étape 4, suivre la [préparation VPS commune](vps-installation.md#3-préparer-git-et-le-fichier-de-clé-publique-sur-le-vps).
+Elle crée le fichier `PUB`, clone le dépôt et affiche le commit à noter pour les outils NAS.
+La clé privée reste sur le NAS sous le compte de collecte.
 
 ## 6. Installer le système de sauvegarde sur le VPS
 
-**VPS — même compte, dans `$HOME/radio-vpn-backup` :**
-
-```bash
-sudo bash install.sh "$PUB"
-sudo cat /etc/radio-vpn-backup.conf
-sudo systemctl is-active cron
-```
-
-L’installateur demande l’heure quotidienne de sauvegarde au format `HH:MM`, en heure
-locale du VPS. Entrée conserve **02:17** ; les valeurs hors `00:00`–`23:59` sont refusées.
-Sans terminal en entrée, l’installation conserve **02:17** sans attendre de saisie.
-L’horaire est enregistré dans `/etc/cron.d/radio-vpn-backup`.
-
-Le script installe Python 3, cron et util-linux si nécessaire, les scripts sous
-`/usr/local/lib/radio-vpn-backup`, la commande `/usr/local/sbin/radio-vpn-backup`, le
-compte VPS `radio-vpn-backup` et sa clé autorisée. Il n'installe pas `age`.
-La configuration doit indiquer `KEEP_VPS=3` et `ENCRYPT=false`.
-
-Le paquet `rsync` est également installé ; la commande forcée commune permet aussi la
-lecture seule rsync confinée à l'export. Cela n'impose pas d'utiliser ABB pour ce collecteur.
-
-L'installateur refuse un compte `radio-vpn-backup` ou une configuration déjà présents.
-**Il ne s'agit pas d'une commande de réinstallation.** Si l'installation est déjà terminée,
-passer à l'étape 7. Si elle est partielle, consulter le [dépannage](maintenance.md) ; ne pas
-supprimer au hasard un compte, ses fichiers ou la PKI pour forcer l'exécution.
-
-La clé autorisée impose une commande restreinte : `list`, `hash IDENTIFIANT`,
-`get IDENTIFIANT`, ou rsync en lecture seule dans l'export. Pas de shell libre, terminal,
-sudo, transfert de ports ou modification VPN.
-En mode standard, le compte peut néanmoins lire les secrets **contenus dans l'archive**.
-Si SSH utilise des règles `AllowUsers`/`AllowGroups` personnalisées, le compte doit y être
-autorisé sans retirer l'administrateur. Cette personnalisation n'est pas faite par l'outil.
+Dans la même session VPS, suivre l’[installation de radio-vpn-backup et du cron](vps-installation.md#4-installer-le-programme-et-le-cron).
+L’installation est nécessaire aussi après une reconstruction/restauration ; elle n’a
+pas à être répétée si le programme et son compte existent déjà.
 
 ## 7. Faire et vérifier la première sauvegarde sans chiffrement
 
-En lançant la commande dans votre terminal, répondre **Entrée** ou **n** à
-« Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ». Ce choix vaut uniquement pour
-cette exécution ; le cron à l’heure choisie reste sans interaction et lit `ENCRYPT` dans la configuration.
-
-**VPS — administrateur :**
-
-```bash
-sudo /usr/local/sbin/radio-vpn-backup
-LATEST=$(sudo find /var/lib/radio-vpn-export -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tail -n 1)
-printf 'Identifiant publié : %s\n' "$LATEST"
-ARCHIVE_DIR="/var/lib/radio-vpn-export/$LATEST"
-sudo ls -ld "$ARCHIVE_DIR"
-sudo ls -l "$ARCHIVE_DIR/backup.tar.gz" "$ARCHIVE_DIR/SHA256SUMS"
-sudo sh -c 'cd "$1" && sha256sum -c SHA256SUMS && gzip -t backup.tar.gz' sh "$ARCHIVE_DIR"
-sudo python3 /usr/local/lib/radio-vpn-backup/snapshot.py check "$ARCHIVE_DIR/backup.tar.gz"
-```
-
-Ne poursuivre qu'après réussite de la commande et apparition d'un identifiant non vide.
-SHA-256 doit afficher `OK` ; gzip et le contrôle interne sont silencieux en cas de succès.
-Le dossier doit appartenir à `root:radio-vpn-backup`, mode 750, les fichiers mode 640.
-L'UI est brièvement indisponible pendant la copie ; **OpenVPN et ses clients ne sont pas
-redémarrés**. Ne faire aucune opération PKI manuelle pendant la préparation.
+Suivre la [première sauvegarde sur le VPS](vps-installation.md#5-produire-une-première-sauvegarde),
+avec Entrée ou `n` pour le mode standard, puis reprendre ci-dessous. La production des
+archives par le VPS et leur collecte par le NAS restent deux tâches distinctes.
 
 ## 8. Mettre les outils sur le NAS et vérifier l'identité SSH du VPS
 

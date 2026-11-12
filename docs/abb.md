@@ -4,6 +4,9 @@ Le **VPS** prépare une archive ; **ABB sur le NAS** la récupère en PULL par S
 Les deux tâches sont distinctes : cron produit les données, ABB planifie la collecte,
 le stockage et la rétention. Le VPS ne contacte pas le NAS.
 
+Commencer par l’[installation du programme sur le VPS](vps-installation.md),
+y compris après une restauration, puis poursuivre à la [configuration ABB](#5-configurer-abb).
+Le présent guide fournit aussi la préparation de la clé nécessaire à cette installation.
 Pour un NAS sans ABB, utiliser le [collecteur personnalisé](installation.md).
 
 ## 1. Prérequis et comptes
@@ -57,60 +60,16 @@ Le fichier sans `.pub` est celui à importer dans ABB depuis le poste de confian
 
 ## 3. Installer sur le VPS
 
-**VPS — compte administrateur créé par radio-vpn, session SSH Bash :**
-
-```bash
-sudo apt update
-sudo apt install -y git rsync
-cd "$HOME"
-git clone https://github.com/SmallTech2/radio-vpn-backup.git
-cd "$HOME/radio-vpn-backup"
-git rev-parse HEAD
-read -r -p 'Coller la ligne PUBLIQUE SSH de collecte : ' ABB_PUBLIC_KEY
-PUB="$HOME/radio-vpn-abb.pub"
-printf '%s\n' "$ABB_PUBLIC_KEY" > "$PUB"
-ssh-keygen -lf "$PUB"
-```
-
-Comparer cette empreinte avec celle du poste. Si le clone existe déjà, utiliser son
-répertoire propre et `git pull --ff-only`, au lieu de le cloner à nouveau.
-
-**Même session VPS, dans le clone :**
-
-```bash
-sudo bash install.sh "$PUB"
-```
-
-L’installateur demande l’heure quotidienne `HH:MM`, **02:17 par défaut, heure locale du
-VPS**. Il installe Python 3, cron, util-linux et rsync, crée le compte et la clé restreinte,
-les répertoires et `/etc/cron.d/radio-vpn-backup`. Sans terminal en entrée, l’heure par
-défaut est conservée. Age n’est pas installé pour la sauvegarde standard.
-
-Si le compte ou la configuration existe déjà, ne pas relancer l’installateur : suivre
-la [maintenance](maintenance.md#installation-vps-déjà-présente-ou-partielle).
+Suivre la [procédure commune d’installation VPS](vps-installation.md#3-préparer-git-et-le-fichier-de-clé-publique-sur-le-vps)
+avec la clé publique préparée à l’étape 2. Elle explique Git, le clonage, l’appel à
+`install.sh`, le compte créé, la configuration et le choix de l’horaire cron.
+Si le programme est déjà installé, utiliser la [maintenance](maintenance.md#installation-vps-déjà-présente-ou-partielle).
 
 ## 4. Produire une archive
 
-**VPS — même administrateur :**
-
-```bash
-sudo /usr/local/sbin/radio-vpn-backup
-LATEST=$(sudo find /var/lib/radio-vpn-export -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tail -n 1)
-printf 'Identifiant publié : %s\n' "$LATEST"
-ARCHIVE_DIR="/var/lib/radio-vpn-export/$LATEST"
-sudo ls -l "$ARCHIVE_DIR"
-sudo sh -c 'cd "$1" && sha256sum -c SHA256SUMS && gzip -t backup.tar.gz' sh "$ARCHIVE_DIR"
-```
-
-Pour ce parcours standard, répondre Entrée ou `n` à la question de chiffrement. Le
-répertoire daté contient `backup.tar.gz` et `SHA256SUMS`. Ne poursuivre qu’après `OK`.
-La copie suspend brièvement l’UI et le renouvellement CRL ; OpenVPN reste actif.
-Ne pas administrer la PKI pendant cette copie. Pour age, suivre le [guide séparé](encryption.md).
-
-Le cron n’attend aucune saisie : `ENCRYPT=false` dans `/etc/radio-vpn-backup.conf` produit
-une archive non chiffrée ; `ENCRYPT=true` nécessite age et ses destinataires publics.
-`KEEP_VPS=3` conserve trois points locaux ; les valeurs acceptées vont de 2 à 30.
-Les chemins, permissions et formats sont décrits dans la [référence](format.md).
+Effectuer la [première sauvegarde et ses contrôles](vps-installation.md#5-produire-une-première-sauvegarde)
+sur le VPS avant de créer la tâche ABB. Le mode standard produit `backup.tar.gz` et
+`SHA256SUMS` ; le [guide age](encryption.md) décrit le chiffrement facultatif.
 
 ## 5. Configurer ABB
 
