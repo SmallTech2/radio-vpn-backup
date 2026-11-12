@@ -1,5 +1,7 @@
 # Méthode alternative : collecteur Synology personnalisé
 
+[Accueil sauvegarde](../README.md) · [Installer sur le VPS](vps-installation.md) · [Collecte ABB](abb.md)
+
 Ce guide concerne uniquement le collecteur `nas-pull.sh`, pour les utilisateurs sans ABB.
 L’[installation du programme sur le VPS](vps-installation.md) est commune aux deux méthodes ;
 ce guide détaille la préparation du NAS et sa collecte alternative.
@@ -10,6 +12,22 @@ Suivre les étapes dans l'ordre. Chaque bloc indique la machine et le compte con
 Les commandes sont à saisir dans Bash, sauf indication contraire. Conserver les sessions
 ouvertes : les variables définies dans un bloc servent aux suivants. Après reconnexion,
 redéfinir les variables indiquées avant de poursuivre.
+
+**Dans cette page**
+
+- [1. Identifier les trois machines et les comptes](#1-identifier-les-trois-machines-et-les-comptes)
+- [2. Créer le compte sur le Synology](#2-créer-le-compte-sur-le-synology)
+- [3. Ouvrir un terminal sous le bon compte NAS](#3-ouvrir-un-terminal-sous-le-bon-compte-nas)
+- [4. Générer la clé SSH sur le NAS](#4-générer-la-clé-ssh-sur-le-nas)
+- [5. Préparer Git et copier la clé publique sur le VPS](#5-préparer-git-et-copier-la-clé-publique-sur-le-vps)
+- [6. Installer le système de sauvegarde sur le VPS](#6-installer-le-système-de-sauvegarde-sur-le-vps)
+- [7. Faire et vérifier la première sauvegarde sans chiffrement](#7-faire-et-vérifier-la-première-sauvegarde-sans-chiffrement)
+- [8. Mettre les outils sur le NAS et vérifier l'identité SSH du VPS](#8-mettre-les-outils-sur-le-nas-et-vérifier-lidentité-ssh-du-vps)
+- [9. Créer la configuration NAS et récupérer les archives manuellement](#9-créer-la-configuration-nas-et-récupérer-les-archives-manuellement)
+- [10. Créer la tâche planifiée DSM](#10-créer-la-tâche-planifiée-dsm)
+- [11. Vérifier l'automatisation et la rétention](#11-vérifier-lautomatisation-et-la-rétention)
+- [Récupérer manuellement une archive](#récupérer-manuellement-une-archive)
+- [Références DSM](#références-dsm)
 
 ## 1. Identifier les trois machines et les comptes
 

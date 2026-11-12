@@ -1,5 +1,7 @@
 # Contrôles et dépannage
 
+[Accueil sauvegarde](../README.md) · [Installer sur le VPS](vps-installation.md) · [Collecte ABB](abb.md) · [Collecteur personnalisé](installation.md)
+
 Les commandes NAS ci-dessous concernent **le collecteur personnalisé**. Pour ABB, voir
 ses [étapes de contrôle et de diagnostic](abb.md). Les commandes VPS de préparation des
 archives restent communes aux deux méthodes.
@@ -12,7 +14,7 @@ NAS_BASE=$(pwd -P)
 CFG="$NAS_BASE/config/vps1.conf"
 ```
 
-Ce sont les dossiers créés dans le [guide d'installation](installation.md), pas un volume
+Ce sont les dossiers créés dans le [guide du collecteur personnalisé](installation.md), pas un volume
 supposé. Si votre identifiant n'est pas `vps1`, employer celui de votre fichier de configuration.
 
 ## Commandes courantes
@@ -69,7 +71,7 @@ automatique ; ne pas supprimer le compte, les archives ou la PKI pour contourner
 
 Le client NAS doit employer le compte **VPS** `radio-vpn-backup`, la clé privée **NAS**
 créée sous `vpnbackup`, et le bon port. `BatchMode=yes` interdit toute question de mot de passe.
-Reprendre la commande SSH `list` du guide d'installation. Sur le VPS, vérifier la présence
+Reprendre la [commande SSH `list` du guide du collecteur](installation.md#8-mettre-les-outils-sur-le-nas-et-vérifier-lidentité-ssh-du-vps). Sur le VPS, vérifier la présence
 de la clé publique et les restrictions SSH éventuelles, sans élargir les droits :
 
 ```bash

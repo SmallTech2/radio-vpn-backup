@@ -1,6 +1,8 @@
 # Chiffrement facultatif avec age
 
-Le mode standard du [guide d'installation](installation.md) ne nécessite pas `age`.
+[Accueil sauvegarde](../README.md) · [Installer sur le VPS](vps-installation.md) · [Collecte ABB](abb.md) · [Collecteur personnalisé](installation.md)
+
+Le mode standard du [guide d’installation VPS](vps-installation.md) ne nécessite pas `age`.
 Ce guide décrit la préparation du mode chiffré ; la collecte NAS utilise les mêmes mécanismes.
 La clé SSH de collecte et la clé age sont **deux paires différentes**, avec des rôles différents.
 

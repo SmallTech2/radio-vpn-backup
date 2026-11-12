@@ -1,8 +1,5 @@
 # radio-vpn-backup
 
-🌐 **Translate to English** — Pour consulter cette page en anglais, utilisez la fonction
-de traduction intégrée de votre navigateur. Copiez les commandes depuis l’original français.
-
 Prépare des sauvegardes confidentielles d’un serveur **Debian 13 AMD64 installé avec
 radio-vpn** : PKI, certificats, révocations, IP fixes, profils et données OpenVPN UI.
 Le VPS prépare l’archive ; le NAS Synology la récupère par SSH, en PULL. Le VPS ne se
@@ -10,11 +7,13 @@ connecte jamais au NAS. OpenVPN reste actif pendant la copie ; l’UI est brièv
 
 Solution validée le 12 novembre 2026 sur Debian 13.7.
 
-## Écosystème Radio VPN
+## Choisir votre procédure
 
-- [radio-vpn](https://github.com/SmallTech2/radio-vpn) : socle serveur ; [installation](https://github.com/SmallTech2/radio-vpn/blob/main/docs/installation.md).
-- **radio-vpn-backup** : préparation et collecte ; [guide ABB](docs/abb.md).
-- [radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore) : réinjection sur un serveur reconstruit avec radio-vpn ; [procédure](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/restoration.md).
+| Votre objectif | Projet | Procédure directe |
+| --- | --- | --- |
+| Installer un serveur VPN | [radio-vpn](https://github.com/SmallTech2/radio-vpn) | [Installer le serveur VPN](https://github.com/SmallTech2/radio-vpn/blob/main/README.md#installer-le-serveur-vpn) |
+| Sauvegarder ce serveur | [radio-vpn-backup](https://github.com/SmallTech2/radio-vpn-backup) | [Installer la sauvegarde sur le VPS](docs/vps-installation.md) |
+| Reconstruire et restaurer | [radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore) | [Reconstruire et restaurer le serveur](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/restoration.md) |
 
 La chaîne complète et ses dépendances sont décrites dans la
 [présentation générale](https://github.com/SmallTech2/radio-vpn/blob/main/docs/ecosystem.md).

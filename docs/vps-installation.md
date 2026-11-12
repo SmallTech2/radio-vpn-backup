@@ -1,8 +1,19 @@
 # Installer radio-vpn-backup sur le VPS
 
+[Accueil sauvegarde](../README.md) · [Collecte ABB](abb.md) · [Collecteur personnalisé](installation.md)
+
 Cette installation est **commune aux deux méthodes de collecte NAS** : ABB et collecteur
 personnalisé. Elle prépare les archives sur le VPS ; elle ne configure pas leur récupération
 sur le NAS. La configuration de la collecte vient ensuite.
+
+**Dans cette page**
+
+- [1. Préparer le serveur](#1-préparer-le-serveur)
+- [2. Disposer de la clé publique de collecte](#2-disposer-de-la-clé-publique-de-collecte)
+- [3. Préparer Git et le fichier de clé publique sur le VPS](#3-préparer-git-et-le-fichier-de-clé-publique-sur-le-vps)
+- [4. Installer le programme et le cron](#4-installer-le-programme-et-le-cron)
+- [5. Produire une première sauvegarde](#5-produire-une-première-sauvegarde)
+- [6. Configurer la récupération sur le NAS](#6-configurer-la-récupération-sur-le-nas)
 
 ## 1. Préparer le serveur
 

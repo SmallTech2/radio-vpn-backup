@@ -1,5 +1,7 @@
 # Sauvegarder avec Synology Active Backup for Business
 
+[Accueil sauvegarde](../README.md) · [Installer sur le VPS](vps-installation.md) · [Collecteur personnalisé](installation.md)
+
 Le **VPS** prépare une archive ; **ABB sur le NAS** la récupère en PULL par SSH.
 Les deux tâches sont distinctes : cron produit les données, ABB planifie la collecte,
 le stockage et la rétention. Le VPS ne contacte pas le NAS.
@@ -8,6 +10,15 @@ Commencer par l’[installation du programme sur le VPS](vps-installation.md),
 y compris après une restauration, puis poursuivre à la [configuration ABB](#5-configurer-abb).
 Le présent guide fournit aussi la préparation de la clé nécessaire à cette installation.
 Pour un NAS sans ABB, utiliser le [collecteur personnalisé](installation.md).
+
+**Dans cette page**
+
+- [1. Prérequis et comptes](#1-prérequis-et-comptes)
+- [2. Préparer la clé SSH de collecte](#2-préparer-la-clé-ssh-de-collecte)
+- [3. Installer sur le VPS](#3-installer-sur-le-vps)
+- [4. Produire une archive](#4-produire-une-archive)
+- [5. Configurer ABB](#5-configurer-abb)
+- [6. Contrôler la collecte et récupérer les fichiers](#6-contrôler-la-collecte-et-récupérer-les-fichiers)
 
 ## 1. Prérequis et comptes
 

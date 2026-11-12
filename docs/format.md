@@ -1,7 +1,10 @@
 # Format des sauvegardes et compatibilité
 
-Référence des fichiers produits par radio-vpn-backup. Pour installer et collecter,
-suivre le [guide ABB](abb.md) ou le [collecteur personnalisé](installation.md).
+[Accueil sauvegarde](../README.md) · [Installer sur le VPS](vps-installation.md) · [Collecte ABB](abb.md) · [Collecteur personnalisé](installation.md)
+
+Référence des fichiers produits par radio-vpn-backup. Commencer par
+[l’installation sur le VPS](vps-installation.md), puis configurer la collecte
+[ABB](abb.md#5-configurer-abb) ou le [collecteur personnalisé](installation.md).
 
 ## Compatibilité
 
