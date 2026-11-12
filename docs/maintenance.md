@@ -69,7 +69,7 @@ automatique ; ne pas supprimer le compte, les archives ou la PKI pour contourner
 
 Le client NAS doit employer le compte **VPS** `radio-vpn-backup`, la clé privée **NAS**
 créée sous `vpnbackup`, et le bon port. `BatchMode=yes` interdit toute question de mot de passe.
-Reprendre le test `ssh ... list` du guide d'installation. Sur le VPS, vérifier la présence
+Reprendre la commande SSH `list` du guide d'installation. Sur le VPS, vérifier la présence
 de la clé publique et les restrictions SSH éventuelles, sans élargir les droits :
 
 ```bash
@@ -119,7 +119,8 @@ au fil des collectes et ne peut pas récupérer des semaines jamais collectées.
 La sauvegarde ne couvre pas l'OS complet, les mots de passe Linux ou les clés SSH d'hôte.
 Les ACL personnalisées et les chemins hors contrat demandent une analyse distincte.
 La cohérence suppose une fenêtre sans opérations PKI manuelles ; l’installation ne fournit
-pas de transaction globale entre SQLite, PKI et CCD. Tester la restauration régulièrement.
+pas de transaction globale entre SQLite, PKI et CCD. Garder la PKI hors de toute
+administration concurrente pendant la copie.
 
 ## Changer l’heure d’une installation existante
 
@@ -134,3 +135,25 @@ heure**, selon l’heure locale du VPS. Par exemple, `45 3 * * * root ...` signi
 jour à 03:45 ; conserver toute la commande existante après les champs horaires. Cron
 relit le fichier automatiquement. Décaler également la collecte NAS si nécessaire.
 L’horaire ne participe pas au choix du chiffrement : cron reste toujours non interactif.
+
+## Mettre à jour les fichiers installés
+
+**VPS — administrateur, en dehors d’une sauvegarde active :** dans le clone ayant servi
+à l’installation, consulter les changements et la compatibilité, puis :
+
+```bash
+cd "$HOME/radio-vpn-backup"
+git status --short
+git pull --ff-only
+sudo install -o root -g root -m 755 scripts/backup.sh scripts/export.sh scripts/snapshot.py /usr/local/lib/radio-vpn-backup/
+sudo install -o root -g root -m 644 config/rsyncd.conf /etc/radio-vpn-backup-rsyncd.conf
+```
+
+Si le clone est ailleurs, utiliser son chemin réel. Ne pas poursuivre avec des changements
+locaux non traités. Cette copie conserve le compte, les clés, les archives, l’horaire cron
+et `/etc/radio-vpn-backup.conf`. Ne pas relancer `install.sh`, qui refuse une installation
+existante. Aucun redémarrage d’OpenVPN ni de SSH n’est nécessaire.
+
+**Collecteur personnalisé — NAS :** déposer la même révision des outils dans son
+répertoire `tools/radio-vpn-backup`, comme dans le guide d’installation. **ABB :** ne pas
+ajouter de tâche du collecteur personnalisé ; sa collecte reste gérée dans ABB.

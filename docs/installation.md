@@ -28,7 +28,7 @@ dossier, sans écraser ceux du premier serveur.
 **Prérequis VPS :** installation radio-vpn **terminée**, accès SSH en IPv4 et
 clé administrateur fonctionnels, sudo, accès HTTPS sortant à Debian et GitHub, espace
 libre pour la copie de travail et les archives. Le numéro de version ne bloque pas la
-sauvegarde : les composants sont contrôlés, notamment sur une installation radio-v2.1.
+sauvegarde : les composants et les chemins attendus sont contrôlés.
 Voir les [éléments indispensables et facultatifs](format.md#compatibilité). Une
 installation OpenVPN personnalisée avec d’autres chemins n’est pas automatiquement prise en charge.
 
@@ -288,7 +288,7 @@ Résultat attendu : les identifiants disponibles, sans demande de mot de passe. 
 ne peut pas servir à une session `ssh` ordinaire, à `scp` ou à un explorateur SFTP.
 Ne pas désactiver la vérification des clés d'hôte pour contourner une erreur.
 
-## 9. Créer la configuration NAS et faire un transfert manuel
+## 9. Créer la configuration NAS et récupérer les archives manuellement
 
 **NAS — `vpnbackup`, même session ayant défini `VPS_HOST` et `VPS_PORT` :**
 
@@ -343,7 +343,7 @@ printf 'umask 077\nexport PATH=%q\n%q %q %q >> %q 2>&1\n' \
 4. Dans **Paramètres de tâche > Exécuter la commande**, coller exactement les lignes affichées.
    Le PATH explicite évite de dépendre du profil du terminal interactif.
 5. Activer la notification d'exécution anormale si proposée. Configurer auparavant le
-   destinataire dans **Panneau de configuration > Notification** et faire un envoi de test.
+   destinataire dans **Panneau de configuration > Notification** et vérifier l’envoi de la notification.
 6. Enregistrer, sélectionner la tâche, puis **Exécuter**. Vérifier son résultat et le journal.
 
 **NAS — `vpnbackup` :**
@@ -354,8 +354,8 @@ ls -lt "$NAS_BASE/archives/vps1"
 ```
 
 Les notifications ne remplacent pas le contrôle des dates et du contenu du journal.
-Si le terminal NAS est fermé, l'administrateur peut le rouvrir avec l'étape 3. Après les
-tests, le SSH **entrant du NAS** peut être désactivé dans DSM : la tâche utilise le client
+Si le terminal NAS est fermé, l'administrateur peut le rouvrir avec l'étape 3. Après la
+configuration, le SSH **entrant du NAS** peut être désactivé dans DSM : la tâche utilise le client
 SSH sortant, pas ce service. Ne pas désactiver le SSH du VPS.
 
 ## 11. Vérifier l'automatisation et la rétention
@@ -372,18 +372,23 @@ sudo systemctl is-active openvpn@server.service openvpn-ui.service radio-renew-c
 
 **DSM — administrateur :** contrôler la dernière exécution automatique et son utilisateur.
 **NAS — `vpnbackup` :** consulter le journal de collecte, vérifier l'arrivée d'un nouvel
-identifiant et ses SHA-256 comme à l'étape 9. Un essai manuel ne prouve pas que cron et
-DSM s'exécutent automatiquement : attendre et vérifier au moins un cycle complet.
+identifiant et ses SHA-256 comme à l’étape 9. Contrôler la prochaine exécution planifiée
+sur le VPS et sur DSM, puis continuer à surveiller les dates de collecte.
 
 Le VPS garde les **3 derniers points** par défaut (réglage `KEEP_VPS`, de 2 à 30).
 Le NAS garde un point par jour pour les 7 jours collectés les plus récents et un point par
 semaine pour les 4 semaines collectées les plus récentes, en UTC, avec déduplication.
-Ce n'est pas nécessairement 11 fichiers. Il faut plusieurs semaines pour observer la
-rétention hebdomadaire complète ; une panne de collecte ne recrée pas les points manqués.
-Ne pas supprimer des sauvegardes pour simuler ce vieillissement sur vos données réelles.
+Les points quotidiens et hebdomadaires peuvent se recouvrir : ce n’est pas nécessairement
+11 fichiers. Une panne de collecte ne recrée pas les points manqués.
 
-La prochaine étape est une [restauration de test](validation.md). Voir aussi le
-[dépannage](maintenance.md) et le [chiffrement facultatif](encryption.md).
+## Récupérer manuellement une archive
+
+**Poste d’administration — File Station, sous le compte de collecte :** ouvrir
+`home/radio-vpn/archives/vps1` si vous avez suivi cet exemple, ou le dossier réel choisi
+pour `DESTINATION` et `VPS_NAME`. Télécharger l’archive datée et son fichier `.sha256`.
+Si le téléchargement est en ZIP, l’extraire pour retrouver ces deux fichiers.
+Suivre ensuite la [restauration](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/restoration.md).
+Voir aussi le [dépannage](maintenance.md) et le [chiffrement facultatif](encryption.md).
 
 ## Références DSM
 

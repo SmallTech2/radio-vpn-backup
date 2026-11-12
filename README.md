@@ -1,66 +1,63 @@
 # radio-vpn-backup
 
-Sauvegarde d'un VPS Debian 13 AMD64 installé avec
-[radio-vpn](https://github.com/SmallTech2/radio-vpn).
-La compatibilité dépend des [composants présents](docs/format.md#compatibilité),
-pas du numéro de version. La version d’origine est conservée dans la sauvegarde.
-Le VPS prépare une archive chaque jour par cron ; le Synology la récupère par SSH.
-L’installation demande l’heure au format `HH:MM` (défaut **02:17**, heure locale du VPS)
-et l’inscrit dans `/etc/cron.d/radio-vpn-backup`.
-**Le VPS ne contacte jamais le NAS.** Le même compte Linux `radio-vpn-backup` sert aux
-deux méthodes de collecte ; il ne reçoit ni sudo ni shell libre.
+Prépare des sauvegardes confidentielles d’un serveur **Debian 13 AMD64 installé avec
+radio-vpn** : PKI, certificats, révocations, IP fixes, profils et données OpenVPN UI.
+Le VPS prépare l’archive ; le NAS Synology la récupère par SSH, en PULL. Le VPS ne se
+connecte jamais au NAS. OpenVPN reste actif pendant la copie ; l’UI est brièvement suspendue.
 
-## Commencer
+Solution validée le 12 novembre 2026 sur Debian 13.7.
 
-Choisir une méthode et suivre son guide, sans mélanger leurs tâches ni leurs rétentions :
+## Écosystème Radio VPN
 
-1. **Principale : [Active Backup for Business](docs/abb.md)**, serveur de fichiers rsync
-   **module via SSH**. ABB gère la collecte, le stockage des versions et la rétention NAS.
-2. **Alternative : [collecteur personnalisé](docs/installation.md)** pour les NAS sans ABB,
-   avec compte DSM dédié et tâche du planificateur.
+- [radio-vpn](https://github.com/SmallTech2/radio-vpn) : socle serveur ; [installation](https://github.com/SmallTech2/radio-vpn/blob/main/docs/installation.md).
+- **radio-vpn-backup** : préparation et collecte ; [guide ABB](docs/abb.md).
+- [radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore) : réinjection sur un serveur reconstruit avec radio-vpn ; [procédure](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/restoration.md).
 
-La commande forcée expose uniquement le module **archives**, en lecture seule, à travers
-SSH. Aucun service rsync permanent ni port 873 n'est nécessaire. Le mode shell avec
-`--protect-args` n'est pas compatible avec `rrsync` : sélectionner **module via SSH**.
-Les tests SSH/rsync ne remplacent pas une collecte réelle réussie dans votre ABB.
+La chaîne complète et ses dépendances sont décrites dans la
+[présentation générale](https://github.com/SmallTech2/radio-vpn/blob/main/docs/ecosystem.md).
+Une installation OpenVPN d’un autre outil n’est pas garantie compatible. Ce périmètre
+ne signifie pas qu’une adaptation soit techniquement impossible.
 
-Le compte DSM `vpn-backup` et le partage `VPN-Backup` ne sont pas des prérequis ABB :
-ABB gère ses propres tâches et sa destination. Le compte **VPS** reste `radio-vpn-backup`.
+## Installer et collecter
 
-## Données et modes
+1. Suivre la méthode principale : [Active Backup for Business, module rsync via SSH](docs/abb.md).
+2. Sans ABB, suivre l’[alternative avec collecteur personnalisé](docs/installation.md).
 
-PKI complète, certificats, révocations, IP fixes, profils clients, base SQLite et ressources
-UI, scripts et configurations du projet sont inclus. Voir la [liste exacte](docs/format.md).
-La copie suspend brièvement l'UI, mais ne redémarre pas OpenVPN ni ses clients.
+Le compte VPS `radio-vpn-backup` est créé par l’installateur, sans sudo ni shell libre.
+Le module ABB `archives` expose seulement `/var/lib/radio-vpn-export` en lecture seule.
+Aucun port 873 ni service rsync permanent n’est nécessaire. ABB gère son stockage et
+sa rétention ; les comptes et dossiers DSM du collecteur personnalisé ne sont pas requis.
 
-- **Lancement manuel dans un terminal :** « Voulez-vous chiffrer la sauvegarde avec age ? [o/N] ».
-  Entrée ou `n` produit une `.tar.gz` sans age. `o` utilise les destinataires publics configurés
-  ou demande le chemin de leur fichier s’il manque. Ce choix ne modifie pas la configuration.
-- **Cron quotidien, sans interaction :** `ENCRYPT=false` produit une `.tar.gz` ; `ENCRYPT=true`
-  produit une `.tar.gz.age` avec les destinataires configurés. Aucune question n’est posée.
+L’installation demande l’heure quotidienne au format `HH:MM`, **02:17 par défaut en
+heure locale du VPS**, et l’écrit dans `/etc/cron.d/radio-vpn-backup`.
 
-Le [guide de chiffrement facultatif](docs/encryption.md) explique la préparation des clés.
-Age n’est nécessaire que pour une exécution chiffrée. Tout lancement sans terminal en
-entrée utilise la configuration, comme cron.
+## Sauvegarde manuelle et chiffrement
 
-**Les archives non chiffrées contiennent notamment la clé privée de la CA et les clés
-clients. Ce choix est volontaire et son risque est accepté.** Limiter l'accès aux fichiers
-et aux dossiers ; ne jamais publier les sauvegardes. SHA-256 contrôle l'intégrité, pas
-l'identité de leur auteur.
+Sur le **VPS, compte administrateur avec sudo** :
+
+```bash
+sudo /usr/local/sbin/radio-vpn-backup
+```
+
+Dans un terminal, répondre Entrée à la proposition de chiffrement pour produire une
+`.tar.gz`. Répondre `o` pour age ; les destinataires publics configurés sont réutilisés,
+ou leur fichier est demandé. Le choix ne modifie pas la configuration du cron.
+Sans terminal, cron utilise `ENCRYPT=false` par défaut, ou `ENCRYPT=true` et `RECIPIENTS`
+pour chiffrer sans interaction. Age n’est requis que pour une exécution chiffrée.
+
+**L’archive non chiffrée contient la clé privée de la CA et les clés clients.** Ce choix
+est volontaire ; stocker ces données dans un emplacement protégé. Pour age, conserver
+la clé privée de déchiffrement hors du VPS, indépendamment de la clé SSH de collecte.
 
 ## Guides
 
-- [Active Backup for Business : installation et validation](docs/abb.md).
-- [Alternative : première installation et automatisation personnalisée](docs/installation.md).
-- [Contrôles courants et dépannage](docs/maintenance.md).
-- [Chiffrement facultatif](docs/encryption.md).
-- [Contenu et format d'archive](docs/format.md).
-- [Recette réelle de sauvegarde/restauration](docs/validation.md).
-- [Restaurer sur un VPS de remplacement](https://github.com/SmallTech2/radio-vpn-restore).
+[ABB](docs/abb.md) · [Collecteur personnalisé](docs/installation.md) ·
+[Chiffrement age](docs/encryption.md) · [Maintenance](docs/maintenance.md) ·
+[Format et fichiers sauvegardés](docs/format.md).
 
-Les tests automatisés ne remplacent pas une recette sur VPS et DSM. Ne lancer aucune
-opération PKI manuelle pendant la copie ; une ancienne archive ne contient pas les
-créations ou révocations postérieures. Aucune Release des outils n'est publiée.
+La compatibilité dépend des composants présents, pas du seul numéro de version. Les
+versions et commits d’origine restent dans l’archive. Ne pas administrer la PKI pendant
+la préparation ; une archive ne contient pas les opérations effectuées après sa création.
 
 ## Licence
 

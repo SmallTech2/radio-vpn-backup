@@ -1,84 +1,58 @@
-# Analyse de radio-vpn et format v1
+# Format des sauvegardes et compatibilité
 
-Cette page est une référence technique. Pour une première utilisation, suivre le
-[guide d'installation](installation.md). Le [chiffrement facultatif](encryption.md)
-est décrit séparément ; il ne change pas le contenu interne de l'archive.
-
-L'installateur `Radio/deploy-vps.sh` refuse un runtime, une configuration OpenVPN, une
-PKI ou `/etc/radio-vpn-deployed` existants. `generate_ca_and_server_certs.sh init-pki`
-refuse une CA existante. La restauration ne doit appeler ni cet installateur sur les
-donnees restaurees, ni `-initialize-only`, ni une commande de generation de CA.
-Aucune adaptation du depot radio-vpn n'est appliquee par ces deux outils.
+Référence des fichiers produits par radio-vpn-backup. Pour installer et collecter,
+suivre le [guide ABB](abb.md) ou le [collecteur personnalisé](installation.md).
 
 ## Compatibilité
 
-La sauvegarde ne filtre pas les installations par numéro de version. Elle contrôle les
-composants aux chemins ci-dessous. Une installation radio-v2.1 peut être sauvegardée
-sans mettre à jour le VPN ni modifier son fichier de déploiement.
+La sauvegarde vise un serveur Debian 13 AMD64 préparé avec radio-vpn. Elle vérifie les
+composants aux chemins ci-dessous, pas une égalité de version. Les versions et commits
+d’origine restent dans `/etc/radio-vpn-deployed` et dans le manifeste.
 
-**Indispensables :** les quatre arborescences Easy-RSA, OpenVPN, runtime UI et scripts ;
-la configuration serveur et le modèle client ; le dossier CCD ; la PKI avec CA et clés,
-certificat serveur, index, compteur de série, vars, CRL, DH et clé tls-crypt ;
-le binaire UI exécutable, sa configuration, sa base SQLite et ses ressources ; le fichier
-d’environnement UI, les métadonnées de déploiement, l’unité UI et les deux unités ainsi
-que le script de renouvellement CRL. Ces derniers sont nécessaires au mécanisme existant
-de suspension du renouvellement pendant la copie.
+**Indispensables :** arborescences Easy-RSA, OpenVPN, runtime UI et scripts ; CA et clés,
+certificat serveur, `index.txt`, `serial`, `vars`, CRL, DH et clé tls-crypt ; configuration
+serveur, modèle client et répertoire CCD ; binaire UI exécutable, ressources, configuration
+et SQLite ; environnement UI, métadonnées, unité UI et composants de renouvellement CRL.
 
-**Facultatifs :** les fichiers de référence nftables, SSH et son helper, la désactivation
-IPv6, logrotate et les limites journald. Ils sont copiés seulement s’ils existent ; leur
-absence n’empêche pas la sauvegarde. Ne pas les créer artificiellement pour passer un contrôle.
-Un élément facultatif présent sous un type incorrect est refusé.
+**Facultatifs :** références SSH et helper, nftables, désactivation IPv6 et configurations
+de logs. Ils sont copiés s’ils existent. Le compteur PKI `crlnumber` est également facultatif :
+la sauvegarde le conserve s’il existe et ne le crée pas sinon. `crl.pem` et `index.txt`
+restent obligatoires. Ne pas fabriquer de fichier pour contourner un contrôle.
 
-Le compteur PKI `crlnumber` n'est pas indispensable : Easy-RSA peut générer une CRL
-sans ce fichier. S'il existe, il est conservé avec toute l'arborescence PKI ; s'il est
-absent, la sauvegarde ne le crée pas. `crl.pem` et `index.txt` restent obligatoires,
-avec vérification de la signature de la CRL et des séries révoquées de l'index.
+Le script de restauration contrôle le format, les fichiers, SQLite, la PKI et les
+configurations sur une destination déjà préparée avec radio-vpn et le même réseau VPN.
+Un serveur préparé autrement, une archive d’un autre outil ou un schéma personnalisé
+n’est pas garanti compatible ; cela ne signifie pas qu’une adaptation soit impossible.
 
-La copie SQLite est contrôlée, ainsi que les correspondances clés/certificats, les
-révocations et les IP fixes. Le réseau déclaré dans les métadonnées doit correspondre à
-la directive serveur OpenVPN. Une incohérence bloque la publication de l’archive.
-Le contenu original de /etc/radio-vpn-deployed est conservé, avec la version et les commits
-d’origine ; aucune valeur n’est remplacée par la version courante.
+## Fichiers inclus et rôle à la restauration
 
-**La compatibilité de restauration est distincte.** Le projet radio-vpn-restore reste
-inchangé et impose actuellement radio-v2.4 et sa liste complète de fichiers. La production
-et la vérification d’une archive radio-v2.1 ne signifient donc pas que cet outil accepte
-déjà sa restauration. Vérifier ce point avant toute bascule ou suppression du serveur source.
-
-## Liste des elements
-
-| Chemin | Role / restauration |
+| Chemin | Contenu et traitement |
 | --- | --- |
-| `/usr/share/easy-rsa/` | Outils et PKI complete : `private/`, `issued/`, `reqs/`, `revoked/`, `renewed/`, index et anciennes copies, serial, crlnumber s'il existe, vars, CRL, DH, `ta.key` |
-| `/etc/openvpn/` | Serveur, modele client, profils, secrets MFA, CCD ; lien `pki` vers `/usr/share/easy-rsa/pki` |
-| `/opt/openvpn-ui-runtime/` | Binaire, `conf`, SQLite `db/data.db`, ressources UI, licence ; exclut `logs/` |
-| `/opt/scripts/` | Scripts applicatifs ; lien `qrencode` vers `/usr/bin/qrencode` |
-| `/etc/openvpn-ui.env` | Secret initial UI ; restaure, permissions conservees |
-| `/etc/radio-vpn-deployed` | Release, commits, ancienne IP publique et CIDR |
-| `/etc/systemd/system/openvpn-ui.service` | Runtime root, port 8080, dependance nftables |
-| `/etc/systemd/system/radio-renew-crl.service` et `.timer` | Service oneshot et timer hebdomadaire persistant |
-| `/usr/local/sbin/radio-renew-crl` | Renouvellement CRL ; aucun renouvellement des certificats |
-| `/etc/logrotate.d/openvpn` | Rotation OpenVPN, sans fichier d'etat |
-| `/etc/systemd/journald.conf.d/99-radio-limits.conf` | Limites journald |
-| `/etc/nftables.conf` | Reference archivee, non injectee : conserver le pare-feu du nouveau VPS prepare |
-| `/etc/sysctl.d/99-radio-disable-ipv6.conf` | Reference archivee, configuration du nouveau VPS conservee |
-| `/etc/ssh/sshd_config`, `/etc/ssh/sshd_config.d/00-radio.conf` | References archivees, jamais appliquees automatiquement au nouveau VPS |
-| `/usr/local/bin/radio-secure-ssh` | Reference archivee ; helper du nouveau VPS conserve |
+| `/usr/share/easy-rsa/` | Outils et PKI complète, clés, certificats, requêtes et historiques, index, compteurs présents, vars, CRL, DH, `ta.key` |
+| `/etc/openvpn/` | Configuration serveur et client, profils, secrets éventuels et CCD ; lien `pki` vers `/usr/share/easy-rsa/pki` |
+| `/opt/openvpn-ui-runtime/` | Binaire, configuration, `db/data.db` et ressources UI ; journaux applicatifs exclus |
+| `/opt/scripts/` | Scripts de l’interface ; lien `qrencode` vers `/usr/bin/qrencode` |
+| `/etc/openvpn-ui.env` | Environnement initial UI, accès confidentiel |
+| `/etc/radio-vpn-deployed` | Version, commits, IP publique et réseau du serveur sauvegardé |
+| `/etc/systemd/system/openvpn-ui.service` | Unité de l’interface |
+| `/etc/systemd/system/radio-renew-crl.service` et `.timer` | Service et planification CRL |
+| `/usr/local/sbin/radio-renew-crl` | Renouvellement de la CRL, sans recréer les certificats |
+| `/etc/logrotate.d/openvpn` | Facultatif ; restauré si présent, sinon celui de destination est conservé |
+| `/etc/systemd/journald.conf.d/99-radio-limits.conf` | Même traitement pour les limites journald |
+| `/etc/nftables.conf` | Référence archivée, non appliquée à la destination |
+| `/etc/sysctl.d/99-radio-disable-ipv6.conf` | Référence archivée, réglages de destination conservés |
+| `/etc/ssh/sshd_config`, `/etc/ssh/sshd_config.d/00-radio.conf` | Références archivées, non appliquées à la destination |
+| `/usr/local/bin/radio-secure-ssh` | Référence archivée, helper de destination conservé |
 
-Les proprietaires sont numeriques. La reference utilise root pour l'UI/PKI et nobody
-pour OpenVPN apres ouverture des cles ; les comptes Linux administrateurs ne possedent
-pas ces donnees. Les mots de passe Linux, `/etc/passwd`, `/etc/shadow`, cles SSH privees
-et cles d'hote ne sont pas copies. Les profils clients contiennent leurs cles privees :
-la sauvegarde non chiffree doit rester dans un dossier prive sur le NAS. Ce choix est volontaire et le risque est accepte.
+Les propriétaires numériques et les modes sont enregistrés. Le dépôt et ses Releases
+ne contiennent pas les données d’exploitation. La sauvegarde n’est pas une image du
+système : elle n’inclut ni les mots de passe Linux, ni `/etc/passwd` ou `/etc/shadow`,
+ni les clés SSH privées ou clés d’hôte. Le compte de collecte NAS et son cron ne sont
+pas réinstallés par radio-vpn-restore.
 
-Services : `openvpn@server.service`, `openvpn-ui.service`, `ssh.service`, `nftables.service`,
-`radio-renew-crl.service`, `radio-renew-crl.timer`, `logrotate.timer`, `systemd-journald.service`.
-Le service Debian OpenVPN et logrotate sont fournis par les paquets du nouveau VPS.
-Le reseau VPN de la sauvegarde doit etre conserve ; le compte Linux et l'IPv4 publique peuvent changer.
+## Conteneur d’archive
 
-## Conteneur d'archive
-
-Une archive `backup.tar.gz` directement exploitable contient (mode standard) :
+Le tar gzip contient :
 
 ```text
 manifest.json
@@ -88,37 +62,41 @@ payload/opt/...
 payload/usr/...
 ```
 
-`manifest.json` : `format: 1`, date UTC, metadonnees de deploiement, versions des paquets,
-comptes sudo candidats et `files` indexe par chemin relatif.
-Le champ `missing_optional` liste les fichiers facultatifs absents ; ils ne figurent
-pas dans l’inventaire des fichiers copiés. La version source figure dans `deployment.release_tag`. Chaque entree indique
-type, mode, UID/GID, SHA-256 pour un fichier, ou cible pour un lien. Le lecteur refuse
-doublons, chemins absolus/traversants, fichiers speciaux, modes setuid/setgid/sticky,
-liens hors contrat et fichiers non declares. Aucun ecrit au travers d'un lien n'est autorise.
-Les deux lecteurs sont autonomes ; toute evolution du format doit rester testee dans les deux depots.
+Le manifeste indique `format: 1`, la date UTC, `deployment`, les versions de paquets,
+les comptes sudo candidats et `files`, indexé par chemin relatif. Chaque entrée contient
+le type, le mode, UID/GID et le SHA-256 du fichier, ou la cible d’un lien. Le champ
+`missing_optional` liste les fichiers système facultatifs absents.
 
-Publication VPS : un repertoire date `AAAAMMJJTHHMMSSZ-xxxxxxxx` contient l'archive
-standard `backup.tar.gz` ou facultativement `backup.tar.gz.age`, et `SHA256SUMS`. Le repertoire est renomme atomiquement apres tous les controles.
-Le protocole SSH ne publie que ces noms strictement formes.
+La préparation utilise la copie SQLite, contrôle son intégrité et vérifie les éléments
+PKI/CRL/CCD requis. La lecture contrôle les empreintes, les chemins autorisés, les liens
+et les permissions ; les chemins traversants, doublons tar et fichiers spéciaux sont refusés.
+Les données temporaires sont dans des dossiers root privés. Aucun accès à la PKI d’origine
+n’est donné au compte de collecte.
 
-En mode `ENCRYPT=true`, le meme tar.gz est chiffre au format natif age.
-Le format interne est le même dans les deux modes. Le protocole SSH `hash IDENTIFIANT` retourne
-`SHA256  backup.tar.gz` ou `SHA256  backup.tar.gz.age`, sans chemin arbitraire.
-Le NAS conserve l'extension du fichier et applique la meme retention aux deux formats.
+## Publication et noms des fichiers
+
+Sur le VPS, chaque dossier `/var/lib/radio-vpn-export/AAAAMMJJTHHMMSSZ-xxxxxxxx/` contient :
+
+- `backup.tar.gz`, ou `backup.tar.gz.age` pour le mode chiffré ;
+- `SHA256SUMS`, avec l’empreinte du fichier publié.
+
+La date du nom est en UTC ; l’horaire du cron est, lui, en heure locale du VPS.
+Le dossier est publié par renommage après les contrôles, puis la rétention locale est
+appliquée. Le chiffrement age enveloppe le même tar gzip ; il ne change pas son format interne.
 
 ## Collecte ABB
 
-Le chemin physique reste `/var/lib/radio-vpn-export`. En mode **module via SSH**,
-`export.sh` accepte exactement `rsync --server --daemon .` (aussi avec `/usr/bin/rsync`)
-et impose `/etc/radio-vpn-backup-rsyncd.conf` : seul le module `archives`, en lecture seule,
-est exposé. Aucun service rsync permanent, port 873 ou privilège sudo n'est nécessaire.
-Les options de suppression des sources et de déréférencement sont refusées.
+Le module `archives` conserve ces noms et dossiers dans les points ABB. La commande
+forcée accepte `rsync --server --daemon .` et impose `/etc/radio-vpn-backup-rsyncd.conf`.
+Le processus ne dure que pendant la connexion SSH : aucun service rsync permanent ni
+port 873. Le module est en lecture seule ; les suppressions des sources et options de
+déréférencement sont refusées. Voir la [procédure ABB](abb.md).
 
-Les demandes shell classiques restent déléguées à `rrsync -ro -no-del`, avec l'export
-comme racine virtuelle et sans accepter `-s`. `rsync --version` et le protocole personnalisé
-`list/hash/get` restent disponibles ; les commandes libres restent refusées.
+## Collecteur personnalisé
 
-ABB conserve les noms `backup.tar.gz` (ou `.age`) et `SHA256SUMS` dans les dossiers datés ;
-le collecteur personnalisé les renomme avec l'identifiant daté et un fichier `.sha256`.
-Le contenu du tar et le format v1 ne changent pas. Voir le [guide ABB](abb.md) pour les
-limites de compatibilité, la rétention ABB et la récupération d'une archive pour restauration.
+Le protocole SSH `list/hash/get` ne donne accès qu’aux identifiants d’archives exportées.
+Le collecteur renomme le fichier en `AAAAMMJJTHHMMSSZ-xxxxxxxx.tar.gz` ou `.tar.gz.age`,
+et écrit un fichier de même nom suivi de `.sha256`. Il contrôle le transfert avant
+publication locale et applique sa rétention aux deux formats. Les requêtes shell rsync
+sans `-s` restent déléguées à `rrsync` en lecture seule ; aucune commande shell libre
+n’est autorisée. Ce mécanisme est indépendant de la planification et de la rétention ABB.

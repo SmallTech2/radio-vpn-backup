@@ -1,7 +1,7 @@
 # Chiffrement facultatif avec age
 
 Le mode standard du [guide d'installation](installation.md) ne nécessite pas `age`.
-Suivre ce guide seulement après avoir validé la sauvegarde et la collecte sans chiffrement.
+Ce guide décrit la préparation du mode chiffré ; la collecte NAS utilise les mêmes mécanismes.
 La clé SSH de collecte et la clé age sont **deux paires différentes**, avec des rôles différents.
 
 ## 1. Générer la clé hors du VPS
@@ -85,10 +85,11 @@ Le résultat chiffré est `backup.tar.gz.age` dans le répertoire daté d’expo
 
 ## 3. Collecte et restauration
 
-**NAS — `vpnbackup` :** la même tâche récupère les deux formats et leurs SHA-256, sans age
-ni clé privée de déchiffrement. La rétention commune accepte les archives mixtes.
+**NAS — opérateur ABB, ou compte du collecteur personnalisé :** la tâche de collecte
+récupère les deux formats et leurs SHA-256, sans age ni clé privée de déchiffrement.
+La rétention de la méthode choisie s’applique également aux archives chiffrées.
 La vérification SHA-256 porte sur le fichier chiffré ; elle ne prouve pas qu'une clé de
-secours est disponible. Tester son déchiffrement/restauration sur une machine de test.
+secours est disponible. Conserver la clé originale accessible indépendamment du VPS et du VPN.
 
 Pour une restauration chiffrée, le [guide radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore/blob/main/docs/encryption.md)
 explique où copier temporairement la clé privée et quand le script la demande.
