@@ -6,8 +6,14 @@
 
 radio-vpn-backup prépare les sauvegardes d’un serveur **Debian 13 AMD64 installé avec
 radio-vpn** : PKI, certificats, révocations, IP fixes, profils et données OpenVPN UI.
-Le VPS prépare une archive par cron ; le NAS la récupère en PULL par SSH avec ABB
-ou le collecteur personnalisé. OpenVPN reste actif ; l’UI est brièvement suspendue.
+Ces archives permettent de reconstruire le serveur avec [radio-vpn-restore](https://github.com/SmallTech2/radio-vpn-restore)
+sans renouveler les certificats clients. Elles ne constituent pas une image complète du système.
+
+Le VPS prépare automatiquement une archive par cron ; le NAS la récupère en PULL par
+SSH avec Synology ABB ou le collecteur personnalisé, avec conservation de plusieurs points.
+Les contrôles d’intégrité et de cohérence précèdent la publication de l’archive.
+Le mode standard produit une `.tar.gz`, avec chiffrement age facultatif.
+OpenVPN reste actif pendant la copie ; l’UI est brièvement suspendue.
 
 La compatibilité dépend des composants présents, pas du seul numéro de version.
 Les versions et commits d’origine restent dans l’archive. Une installation OpenVPN
